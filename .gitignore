@@ -1,0 +1,13 @@
+*.egg-info
+*.pyc
+.venv
+.vscode
+/.ruff_cache
+/staticfiles
+/gourmet.yml
+__pycache__
+dist/
+db.sqlite3
+.env
+.DS_Store
+*.swp

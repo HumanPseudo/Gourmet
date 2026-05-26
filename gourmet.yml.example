@@ -1,0 +1,5 @@
+DEBUG: True
+SECRET_KEY: "django-insecure-gvn+0edhempn2-(to0u34kk59vz8&_a*+_ob_vol@swzi5^(mk"
+ALLOWED_HOSTS: ["localhost", "127.0.0.1"]
+DATABASE_URL: "sqlite:///./db.sqlite3"
+DJANGO_ENV: "development"

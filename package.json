@@ -1,0 +1,17 @@
+{
+  "name": "gourmet",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "tailwind-build": "tailwindcss -i ./ui/main.css -o ./dist/bundles/main.css",
+    "tailwind-watch": "npm run tailwind-build -- --watch"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tailwindcss/cli": "4.2.4",
+    "@alpinejs/csp": "3.15.12",
+    "htmx.org": "2.0.10",
+    "tailwindcss": "4.2.4"
+  }
+}

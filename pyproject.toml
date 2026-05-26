@@ -1,0 +1,123 @@
+[dependency-groups]
+cog = [
+  "cogapp==3.6.0",
+  "goodconf[yaml]==7.0.0",
+]
+dev = [
+  "django-coverage-plugin==3.2.2",
+  "django-debug-toolbar==6.3.0",
+  "django-stubs==6.0.3",
+  "mypy==1.20.2",
+  "pytest-cov==7.1.0",
+  "pytest-django==4.12.0",
+  "pytest-env==1.6.0",
+  "pytest-socket==0.7.0",
+  "pytest-xdist==3.8.0",
+  "pytest==9.0.3",
+  "readable-log-formatter==0.1.4",
+  "requests==2.33.1",
+  "types-requests==2.33.0.20260408",
+]
+prod = [
+    "gunicorn==25.3.0",
+]
+
+[project]
+dependencies = [
+  "dj-database-url==3.1.2",
+  "django-alive==2.0.0",
+  "django==6.0.5",
+  "goodconf[yaml]==7.0.0",
+  "gunicorn==25.3.0",
+  "psycopg==3.3.3",
+  "python-json-logger==4.1.0",
+  "sentry-sdk==2.58.0",
+  "whitenoise==6.12.0",
+  "wsgi-basic-auth==1.1.0",
+]
+name = "gourmet"
+requires-python = ">=3.12"
+version = "0.1.0"
+
+[tool.coverage.report]
+exclude_lines = [
+  "if TYPE_CHECKING:",
+  "if t.TYPE_CHECKING:",
+  "pragma: no cover",
+  "raise NotImplementedError",
+]
+skip_covered = true
+
+[tool.coverage.run]
+branch = true
+core = "ctrace"
+disable_warnings = [
+  "module-not-imported",
+  "module-not-measured",
+  "no-data-collected",
+]
+patch = ["subprocess"]
+plugins = [
+  'django_coverage_plugin',
+]
+source = ["gourmet", "tests"]
+
+[tool.django-stubs]
+
+[tool.mypy]
+plugins = ["mypy_django_plugin.main"]
+
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = [
+  "django.utils.csp",
+  "readable_log_formatter",
+  "wsgi_basic_auth",
+]
+
+[tool.pytest.ini_options]
+addopts = [
+  "--allow-hosts=127.0.0.1,localhost",
+  "--allow-unix-socket",  # Allow async
+  "--disable-socket",  # Prevent network calls.
+  "--fail-on-template-vars",  # Yell at invalid variables in templates
+  "--reuse-db",  # Reuse by default. Use --create-db to recreate test dbs.
+  "--strict-markers",
+]
+markers = [
+  "server_env(env_dict): Pass environment variables to server fixture",
+]
+
+[tool.pytest_env]
+DEBUG = 0
+SENTRY_DSN = ""
+TEMPLATE_DEBUG = 1
+
+[tool.ruff]
+extend-exclude = ["migrations"]
+target-version = "py312"
+
+[tool.ruff.lint]
+ignore = [
+  "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  "ARG001",  # Unused function argument (request, ...)
+  "ARG002",  # Unused method argument (*args, **kwargs)
+  "COM812",  # Check absence of trailing commas. Made redundant by formatter.
+  "D",  # Missing or badly formatted docstrings
+  "FBT",  # Flake Boolean Trap (don't use arg=True in functions)
+  "PLR2004",  # Allow "magic values" (e.g. status_code == 302)
+  "RUF012",  # Mutable class attributes https://github.com/astral-sh/ruff/issues/5243
+]
+select = ["ALL"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"**/migrations/*" = [
+  "E501",  # Allow exceeded line length in migrations.
+]
+"**/tests/**/*" = [
+  "S101",  # Allow use of asserts
+]
+
+[tool.uv]
+add-bounds = "exact"
+exclude-newer = "7 days"

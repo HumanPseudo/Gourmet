@@ -1,0 +1,70 @@
+ARG PROJECT_NAME="gourmet"
+
+# STAGE 1: BUILD NODE
+FROM node:25.9-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS build-node
+ARG PROJECT_NAME
+
+WORKDIR /app
+RUN --mount=type=bind,source=package.json,target=package.json \
+  --mount=type=bind,source=package-lock.json,target=package-lock.json \
+  npm install --no-save
+
+RUN --mount=type=bind,source=package.json,target=package.json \
+  --mount=type=bind,source=package-lock.json,target=package-lock.json \
+  --mount=type=bind,source=ui/,target=ui/ \
+  --mount=type=bind,source=${PROJECT_NAME},target=${PROJECT_NAME}/ \
+  npm run tailwind-build
+
+
+
+# STAGE 2: BUILD PYTHON
+FROM python:3.14@sha256:0ba001803c72c128063cfa88863755f905cefabe73c026c66a5a86d8f1d63e98 AS build-python
+WORKDIR /app
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.2@sha256:c4f5de312ee66d46810635ffc5df34a1973ba753e7241ce3a08ef979ddd7bea5 /uv /uvx /bin/
+ENV PYTHONPYCACHEPREFIX=/tmp/pycache
+ENV PYTHONUNBUFFERED=1
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV LC_ALL=C.UTF-8 LANG=C.UTF-8 \
+  PATH=/app/.venv/bin:${PATH}
+
+ARG PROJECT_NAME
+ENV DJANGO_SETTINGS_MODULE=${PROJECT_NAME}.settings
+
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+  --mount=type=bind,source=uv.lock,target=uv.lock \
+  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+  uv sync --locked
+
+COPY . ./
+COPY --from=build-node /app/dist/ /opt/static/
+
+# Copy JS vendor libs to be included globally in Django
+ARG VENDOR_PATH=/opt/static/vendor
+ARG MODULES_PATH=/app/node_modules
+
+RUN mkdir -p ${VENDOR_PATH}
+# Copy Alpine.js (CSP-compatible build):
+COPY --from=build-node ${MODULES_PATH}/@alpinejs/csp/dist/cdn.js ${VENDOR_PATH}/alpine.js
+COPY --from=build-node ${MODULES_PATH}/@alpinejs/csp/dist/cdn.min.js ${VENDOR_PATH}/alpine.min.js
+# Copy HTMX:
+COPY --from=build-node ${MODULES_PATH}/htmx.org/dist/htmx.js ${VENDOR_PATH}/htmx.js
+COPY --from=build-node ${MODULES_PATH}/htmx.org/dist/htmx.min.js ${VENDOR_PATH}/htmx.min.js
+
+RUN SECRET_KEY=s python manage.py collectstatic --noinput
+
+EXPOSE 8000
+ENV PORT=8000
+# assumes the server is running behind a reverse proxy (Nginx, AWS ALB, etc.)
+# set the `WEB_CONCURRENCY` environment variable to the number of workers you'd
+# like to run
+ENV GUNICORN_CMD_ARGS="\
+  --access-logfile=- \
+  --bind=0.0.0.0:$PORT \
+  --forwarded-allow-ips '*' \
+  --timeout=10 \
+  "
+
+CMD ["gunicorn", "$PROJECT_NAME.wsgi"]

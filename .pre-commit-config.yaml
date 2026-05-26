@@ -1,0 +1,85 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+      - id: file-contents-sorter
+        files: (.dockerignore|.gitignore)
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: [--strict]
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.37.1
+    hooks:
+      - id: check-github-workflows
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.14.0
+    hooks:
+      - id: hadolint-docker
+
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.16.0
+    hooks:
+      - id: pretty-format-toml
+        args: [--autofix, --trailing-commas]
+        types: [toml]
+        files: \.toml
+
+  - repo: https://github.com/ninoseki/uv-sort
+    rev: v0.7.0
+    hooks:
+      - id: uv-sort
+
+  - repo: local
+    hooks:
+      - id: cog
+        name: Update README with cog
+        entry: uv run --only-group cog cog --check -r README.md
+        language: system
+        pass_filenames: false
+        files: (Makefile|README.md|config.py)
+        require_serial: true
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        language: system
+        pass_filenames: true
+        entry: >-
+          docker compose --profile prettier run -T --rm prettier
+          npx prettier --write --ignore-unknown
+        exclude_types: [python]
+        require_serial: true
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        language: system
+        pass_filenames: true
+        entry: docker compose run -T --rm --no-deps app mypy
+        types: [python]
+        require_serial: true
+
+  - repo: https://github.com/renovatebot/pre-commit-hooks
+    rev: 43.141.2
+    hooks:
+      - id: renovate-config-validator
+        args: [--strict]
