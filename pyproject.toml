@@ -7,6 +7,7 @@ dev = [
   "django-coverage-plugin==3.2.2",
   "django-debug-toolbar==6.3.0",
   "django-stubs==6.0.3",
+  "djlint==1.36.4",
   "mypy==1.20.2",
   "pytest-cov==7.1.0",
   "pytest-django==4.12.0",
@@ -16,6 +17,7 @@ dev = [
   "pytest==9.0.3",
   "readable-log-formatter==0.1.4",
   "requests==2.33.1",
+  "ruff==0.15.13",
   "types-requests==2.33.0.20260408",
 ]
 prod = [
@@ -26,6 +28,8 @@ prod = [
 dependencies = [
   "dj-database-url==3.1.2",
   "django-alive==2.0.0",
+  "django-cors-headers==4.9.0",
+  "django-ninja==1.6.2",
   "django==6.0.5",
   "goodconf[yaml]==7.0.0",
   "gunicorn==25.3.0",
@@ -63,6 +67,7 @@ plugins = [
 source = ["gourmet", "tests"]
 
 [tool.django-stubs]
+django_settings_module = "gourmet.settings"
 
 [tool.mypy]
 plugins = ["mypy_django_plugin.main"]
@@ -95,6 +100,7 @@ TEMPLATE_DEBUG = 1
 
 [tool.ruff]
 extend-exclude = ["migrations"]
+line-length = 88
 target-version = "py312"
 
 [tool.ruff.lint]
@@ -103,12 +109,28 @@ ignore = [
   "ARG001",  # Unused function argument (request, ...)
   "ARG002",  # Unused method argument (*args, **kwargs)
   "COM812",  # Check absence of trailing commas. Made redundant by formatter.
-  "D",  # Missing or badly formatted docstrings
-  "FBT",  # Flake Boolean Trap (don't use arg=True in functions)
-  "PLR2004",  # Allow "magic values" (e.g. status_code == 302)
-  "RUF012",  # Mutable class attributes https://github.com/astral-sh/ruff/issues/5243
+  "D",       # Missing or badly formatted docstrings
+  "FBT",     # Flake Boolean Trap (don't use arg=True in functions)
+  "PLR2004", # Allow "magic values" (e.g. status_code == 302)
+  "RUF012",  # Mutable class attributes
+  "DJ001",   # Avoid nullable CharField/TextField
 ]
-select = ["ALL"]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "B",   # flake8-bugbear
+  "C4",  # flake8-comprehensions
+  "UP",  # pyupgrade
+  "DJ",  # flake8-django
+  "T20", # flake8-print
+]
+
+[tool.djlint]
+ignore = "H006,H030,H031"
+indent = 2
+profile = "django"
 
 [tool.ruff.lint.extend-per-file-ignores]
 "**/migrations/*" = [

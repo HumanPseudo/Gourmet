@@ -18,9 +18,12 @@ from typing import Any
 import dj_database_url
 import sentry_sdk
 from django.utils.csp import CSP
+from django_stubs_ext import monkeypatch
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from .config import config
+
+monkeypatch()
 
 config.load()
 
@@ -50,6 +53,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
+    "ninja",
     "django_alive",
     # Local apps
     "gourmet.apps.accounts",
@@ -57,6 +62,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django_alive.middleware.healthcheck_bypass_host_check",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -70,7 +76,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = f"{PROJECT_NAME}.urls"
 
-TEMPLATES = [
+TEMPLATES: list[dict[str, Any]] = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
@@ -168,9 +174,8 @@ STORAGES = {
 }
 
 # Match filename with 12 hex digits before the extension
-WHITENOISE_IMMUTABLE_FILE_TEST = lambda _, url: re.match(  # noqa: E731
-    r"^.+\.[0-9a-f]{12}\..+$", url
-)
+def WHITENOISE_IMMUTABLE_FILE_TEST(_: str, url: str) -> re.Match[str] | None:
+    return re.match(r"^.+\.[0-9a-f]{12}\..+$", url)
 
 
 # Default primary key field type
@@ -184,13 +189,17 @@ SECURE_REDIRECT_EXEMPT = [r"^-/"]  # django-alive URLs
 
 # CSP
 # https://docs.djangoproject.com/en/6.0/ref/settings/#secure-csp
-SECURE_CSP = {
+SECURE_CSP: dict[str, list[str]] = {
     "default-src": [CSP.SELF],
     "script-src": [CSP.SELF],
-    "style-src": [CSP.SELF, CSP.NONCE],
+    "style-src": [CSP.SELF, "'unsafe-inline'"],
+    "img-src": [CSP.SELF, "data:"],
 }
 
 REFERRER_POLICY = "same-origin"
+
+CORS_ALLOWED_ORIGINS = config.CORS_ALLOWED_ORIGINS
+CORS_ALLOW_CREDENTIALS = True
 
 
 def log_format() -> str:
@@ -215,7 +224,7 @@ def log_format() -> str:
     return " ".join([f"%({i:s})" for i in keys])
 
 
-LOGGING = {
+LOGGING: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
@@ -247,10 +256,10 @@ LOGGING = {
 
 # setup pretty logging for local dev
 with contextlib.suppress(ModuleNotFoundError):
-    import readable_log_formatter  # noqa: F401
+    import readable_log_formatter
 
-    LOGGING["formatters"]["default"] = {  # type: ignore[index]
-        "()": "readable_log_formatter.ReadableFormatter",
+    LOGGING["formatters"]["default"] = {
+        "()": readable_log_formatter.ReadableFormatter,
     }
 
 if config.DJANGO_ENV == "production":
@@ -282,3 +291,7 @@ sentry_sdk.init(
 )
 
 AUTH_USER_MODEL = "accounts.User"
+
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "index"
+LOGOUT_REDIRECT_URL = "login"

@@ -14,8 +14,10 @@ framework.
 
 """
 
-# setting points here.
 import os
+from collections.abc import Callable
+from typing import Any
+
 import wsgi_basic_auth
 from django.core.wsgi import get_wsgi_application
 
@@ -23,7 +25,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gourmet.settings")
 
 from .config import config
 
-application = get_wsgi_application()
+application: Callable[..., Any] = get_wsgi_application()
 if config.BASIC_AUTH_CREDENTIALS:
     application = wsgi_basic_auth.BasicAuth(
         app=application,
