@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 from uuid import UUID
 
@@ -8,6 +10,7 @@ from ninja import NinjaAPI, Router, Schema
 from ninja.types import DictStrAny
 
 from gourmet.apps.menu.api import router as menu_router
+from gourmet.apps.tables.api import router as tables_router
 
 from .auth import AdminTokenAuth, TokenAuth
 from .forms import CustomUserCreationForm
@@ -228,3 +231,4 @@ def get_user(request: HttpRequest, user_id: UUID) -> UserOut:
 
 api.add_router("/admin", admin_api, tags=["Admin"])
 api.add_router("/menu", menu_router, tags=["Menu"])
+api.add_router("/tables", tables_router, tags=["Tables"])

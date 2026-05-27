@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     # Local apps
     "gourmet.apps.accounts",
     "gourmet.apps.menu",
+    "gourmet.apps.tables",
 ]
 
 MIDDLEWARE = [
