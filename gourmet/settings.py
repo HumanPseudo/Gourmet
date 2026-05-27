@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "django_alive",
     # Local apps
     "gourmet.apps.accounts",
+    "gourmet.apps.menu",
 ]
 
 MIDDLEWARE = [

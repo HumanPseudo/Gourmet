@@ -7,11 +7,18 @@ from django.shortcuts import get_object_or_404
 from ninja import NinjaAPI, Router, Schema
 from ninja.types import DictStrAny
 
+from gourmet.apps.menu.api import router as menu_router
+
 from .auth import AdminTokenAuth, TokenAuth
 from .forms import CustomUserCreationForm
 from .models import AuthToken, Role, User
 
-api = NinjaAPI(auth=TokenAuth())
+api = NinjaAPI(
+    auth=TokenAuth(),
+    title="Gourmet API",
+    version="1.0.0",
+    description="Restaurant management system — menu, orders, and administration.",
+)
 admin_api = Router(auth=AdminTokenAuth())
 
 
@@ -96,7 +103,11 @@ def user_to_out(u: User) -> UserOut:
 # ── Public endpoints ───────────────────────────────────────────────────
 
 
-@api.post("/auth/register", auth=None, response={201: AuthTokenOut, 400: MessageOut})
+@api.post(
+    "/auth/register", auth=None, tags=["Auth"],
+    response={201: AuthTokenOut, 400: MessageOut},
+    summary="Register a new user",
+)
 def register(
     request: HttpRequest, payload: RegisterIn
 ) -> tuple[int, dict[str, str | UserOut]]:
@@ -119,7 +130,11 @@ def register(
     return 201, {"token": token.key, "user": user_to_out(user)}
 
 
-@api.post("/auth/login", auth=None, response={200: AuthTokenOut, 401: MessageOut})
+@api.post(
+    "/auth/login", auth=None, tags=["Auth"],
+    response={200: AuthTokenOut, 401: MessageOut},
+    summary="Login and get auth token",
+)
 def login_view(
     request: HttpRequest, payload: LoginIn
 ) -> tuple[int, dict[str, str | UserOut]]:
@@ -131,7 +146,10 @@ def login_view(
     return 200, {"token": token.key, "user": user_to_out(user)}
 
 
-@api.post("/auth/logout", response=MessageOut)
+@api.post(
+    "/auth/logout", tags=["Auth"], response=MessageOut,
+    summary="Logout and invalidate token",
+)
 def logout_view(request: HttpRequest) -> dict[str, str]:
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
@@ -140,7 +158,11 @@ def logout_view(request: HttpRequest) -> dict[str, str]:
     return {"detail": "Logged out"}
 
 
-@api.get("/auth/me", response={200: UserOut, 401: MessageOut})
+@api.get(
+    "/auth/me", tags=["Auth"],
+    response={200: UserOut, 401: MessageOut},
+    summary="Get current user profile",
+)
 def me(request: Any) -> tuple[int, UserOut] | tuple[int, DictStrAny]:
     if not request.auth:
         return 401, {"detail": "Not authenticated"}
@@ -150,7 +172,7 @@ def me(request: Any) -> tuple[int, UserOut] | tuple[int, DictStrAny]:
 # ── Admin endpoints ────────────────────────────────────────────────────
 
 
-@admin_api.get("/roles", response=list[RoleOut])
+@admin_api.get("/roles", response=list[RoleOut], summary="List all roles")
 def list_roles(request: HttpRequest) -> list[RoleOut]:
     return [
         RoleOut(id=r.pk, name=r.name, description=r.description)
@@ -158,7 +180,10 @@ def list_roles(request: HttpRequest) -> list[RoleOut]:
     ]
 
 
-@admin_api.post("/roles", response={201: RoleOut, 400: MessageOut})
+@admin_api.post(
+    "/roles", response={201: RoleOut, 400: MessageOut},
+    summary="Create a role",
+)
 def create_role(
     request: HttpRequest, payload: RoleIn
 ) -> tuple[int, RoleOut] | tuple[int, dict[str, str]]:
@@ -168,13 +193,13 @@ def create_role(
     return 201, RoleOut(id=role.pk, name=role.name, description=role.description)
 
 
-@admin_api.get("/roles/{role_id}", response=RoleOut)
+@admin_api.get("/roles/{role_id}", response=RoleOut, summary="Get role by ID")
 def get_role(request: HttpRequest, role_id: UUID) -> RoleOut:
     role = get_object_or_404(Role, pk=role_id)
     return RoleOut(id=role.pk, name=role.name, description=role.description)
 
 
-@admin_api.put("/roles/{role_id}", response=RoleOut)
+@admin_api.put("/roles/{role_id}", response=RoleOut, summary="Update a role")
 def update_role(request: HttpRequest, role_id: UUID, payload: RoleIn) -> RoleOut:
     role = get_object_or_404(Role, pk=role_id)
     role.name = payload.name
@@ -183,22 +208,23 @@ def update_role(request: HttpRequest, role_id: UUID, payload: RoleIn) -> RoleOut
     return RoleOut(id=role.pk, name=role.name, description=role.description)
 
 
-@admin_api.delete("/roles/{role_id}", response=MessageOut)
+@admin_api.delete("/roles/{role_id}", response=MessageOut, summary="Delete a role")
 def delete_role(request: HttpRequest, role_id: UUID) -> dict[str, str]:
     role = get_object_or_404(Role, pk=role_id)
     role.delete()
     return {"detail": "Role deleted"}
 
 
-@admin_api.get("/users", response=list[UserOut])
+@admin_api.get("/users", response=list[UserOut], summary="List all users")
 def list_users(request: HttpRequest) -> list[UserOut]:
     return [user_to_out(u) for u in User.objects.all().order_by("email")]
 
 
-@admin_api.get("/users/{user_id}", response=UserOut)
+@admin_api.get("/users/{user_id}", response=UserOut, summary="Get user by ID")
 def get_user(request: HttpRequest, user_id: UUID) -> UserOut:
     user = get_object_or_404(User, pk=user_id)
     return user_to_out(user)
 
 
-api.add_router("/admin", admin_api)
+api.add_router("/admin", admin_api, tags=["Admin"])
+api.add_router("/menu", menu_router, tags=["Menu"])
