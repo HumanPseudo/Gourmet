@@ -16,12 +16,16 @@ Including another URLconf
 
 from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import URLPattern, URLResolver, include, path
 from django.views.generic import TemplateView
 
-urlpatterns = [
+from gourmet.apps.accounts.api import api
+
+urlpatterns: list[URLPattern | URLResolver] = [
     path(f"{settings.PROJECT_NAME}-admin/", admin.site.urls),
     path("-/", include("django_alive.urls")),
+    path("api/", api.urls),
+    path("accounts/", include("gourmet.apps.accounts.urls")),
     path(
         "",
         TemplateView.as_view(

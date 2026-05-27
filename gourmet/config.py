@@ -58,6 +58,10 @@ class Config(GoodConf):
         default=DEBUG,
         description="Enable to measure template coverage",
     )
+    CORS_ALLOWED_ORIGINS: list[str] = Field(
+        default=["http://localhost:5173"],
+        description="Allowed origins for CORS (e.g. frontend dev server)",
+    )
 
     model_config = {"default_files": ["gourmet.yml"]}
 

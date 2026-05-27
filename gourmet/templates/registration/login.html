@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div class="login-container" style="max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px;">
+    <h2>Iniciar Sesión</h2>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        {% if form.errors %}
+            <div style="color: red; margin-bottom: 15px;">
+                <strong>Error:</strong> Email o contraseña incorrectos.
+            </div>
+        {% endif %}
+
+        <div style="margin-bottom: 15px;">
+            <label for="{{ form.username.id_for_label }}">Email:</label><br>
+            {{ form.username }}
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label for="{{ form.password.id_for_label }}">Contraseña:</label><br>
+            {{ form.password }}
+        </div>
+
+        <button type="submit" style="width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Entrar
+        </button>
+    </form>
+</div>
+{% endblock %}
