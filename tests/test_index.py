@@ -1,7 +1,6 @@
-import typing as t
+from __future__ import annotations
 
-if t.TYPE_CHECKING:
-    from django.test import Client
+from django.test import Client
 
 
 def test_index_page(client: Client) -> None:

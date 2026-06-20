@@ -1,9 +1,7 @@
-import typing as t
+from __future__ import annotations
 
+from django.test import Client
 from django.urls import reverse_lazy
-
-if t.TYPE_CHECKING:
-    from django.test import Client
 
 index_url = reverse_lazy("admin:index")
 login_url = reverse_lazy("admin:login")

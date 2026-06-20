@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import typing as t
 
+from django.http import HttpRequest
+from django.test import Client
 from django.urls import path
 from pytest_django.asserts import assertTemplateUsed
-
-if t.TYPE_CHECKING:
-    from django.http import HttpRequest
-    from django.test import Client
-    from pytest_django.fixtures import SettingsWrapper
+from pytest_django.fixtures import SettingsWrapper
 
 
 def error_view(request: HttpRequest) -> t.NoReturn:

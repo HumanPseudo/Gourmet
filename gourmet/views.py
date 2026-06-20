@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
-
 from django import http
 from django.shortcuts import render
-from django.template import TemplateDoesNotExist, loader
 
 
 def bad_request(
