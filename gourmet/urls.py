@@ -21,6 +21,11 @@ from django.views.generic import TemplateView
 
 from gourmet.apps.accounts.api import api
 
+handler400 = "gourmet.views.bad_request"
+handler403 = "gourmet.views.permission_denied"
+handler404 = "gourmet.views.not_found"
+handler500 = "gourmet.views.server_error"
+
 urlpatterns: list[URLPattern | URLResolver] = [
     path(f"{settings.PROJECT_NAME}-admin/", admin.site.urls),
     path("-/", include("django_alive.urls")),

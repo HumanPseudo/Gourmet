@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "gourmet.apps.accounts",
     "gourmet.apps.menu",
     "gourmet.apps.tables",
+    "gourmet.apps.jukebox",
 ]
 
 MIDDLEWARE = [
@@ -77,6 +78,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = f"{PROJECT_NAME}.urls"
+
+ASGI_APPLICATION = f"{PROJECT_NAME}.asgi.application"
 
 TEMPLATES: list[dict[str, Any]] = [
     {
@@ -124,6 +127,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 8},
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
@@ -185,9 +189,12 @@ def WHITENOISE_IMMUTABLE_FILE_TEST(_: str, url: str) -> re.Match[str] | None:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# SSL
+# SSL / Security
 # https://github.com/lincolnloop/django-alive#disabling-allowed_hosts-for-healthchecks
 SECURE_REDIRECT_EXEMPT = [r"^-/"]  # django-alive URLs
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True  # Deprecated in Django 6.0 but explicit
 
 # CSP
 # https://docs.djangoproject.com/en/6.0/ref/settings/#secure-csp
@@ -202,6 +209,44 @@ REFERRER_POLICY = "same-origin"
 
 CORS_ALLOWED_ORIGINS = config.CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = config.CSRF_TRUSTED_ORIGINS
+
+# Upload security
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
+FILE_UPLOAD_PERMISSIONS = 0o644
+
+# URL conventions
+APPEND_SLASH = True
+PREPEND_WWW = False
+
+# Email
+# https://docs.djangoproject.com/en/6.0/ref/settings/#email-backend
+_admins = [("Admin", config.ADMIN_EMAIL)] if config.ADMIN_EMAIL else []
+ADMINS = _admins
+MANAGERS = _admins
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = config.EMAIL_HOST
+EMAIL_PORT = config.EMAIL_PORT
+EMAIL_HOST_USER = config.EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = config.EMAIL_HOST_PASSWORD
+EMAIL_USE_TLS = config.EMAIL_USE_TLS
+EMAIL_USE_SSL = config.EMAIL_USE_SSL
+EMAIL_TIMEOUT = 5
+DEFAULT_FROM_EMAIL = config.DEFAULT_FROM_EMAIL
+SERVER_EMAIL = config.SERVER_EMAIL
+
+# Cache
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+}
+
+# Session
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 
 def log_format() -> str:
@@ -236,25 +281,35 @@ LOGGING: dict[str, Any] = {
         },
     },
     "handlers": {
-        # console logs to stderr
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "default",
         },
+        "mail_admins": {
+            "level": "ERROR",
+            "class": "django.utils.log.AdminEmailHandler",
+            "formatter": "default",
+        },
     },
     "loggers": {
-        # default for all Python modules not listed below
         "": {
             "level": "WARNING",
             "handlers": ["console"],
         },
-        # Our application code
         PROJECT_NAME: {
             "level": config.LOG_LEVEL,
             "propagate": True,
         },
     },
 }
+
+# Add mail_admins handler in production
+if config.DJANGO_ENV == "production":
+    LOGGING["loggers"]["django.request"] = {
+        "level": "ERROR",
+        "handlers": ["mail_admins", "console"],
+        "propagate": False,
+    }
 
 # setup pretty logging for local dev
 with contextlib.suppress(ModuleNotFoundError):
@@ -264,15 +319,21 @@ with contextlib.suppress(ModuleNotFoundError):
         "()": readable_log_formatter.ReadableFormatter,
     }
 
+# Production overrides
 if config.DJANGO_ENV == "production":
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
 
-    # HTTPS only behind a proxy that terminates SSL/TLS
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+    # Override email backend for dev
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 
 def _sentry_traces_sampler(ctx: dict[str, Any]) -> float:
@@ -297,3 +358,15 @@ AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "index"
 LOGOUT_REDIRECT_URL = "login"
+
+PEAR_API_URL = config.PEAR_API_URL
+
+# Warnings to silence in development
+SILENCED_SYSTEM_CHECKS: list[str] = []
+if DEBUG:
+    SILENCED_SYSTEM_CHECKS = [
+        "security.W004",  # SECURE_HSTS_SECONDS not set
+        "security.W008",  # SECURE_SSL_REDIRECT not set
+        "security.W012",  # SESSION_COOKIE_SECURE not set
+        "security.W018",  # DEBUG is True
+    ]

@@ -1,5 +1,15 @@
 DEBUG: True
 SECRET_KEY: "django-insecure-gvn+0edhempn2-(to0u34kk59vz8&_a*+_ob_vol@swzi5^(mk"
 ALLOWED_HOSTS: ["localhost", "127.0.0.1"]
+CORS_ALLOWED_ORIGINS:
+  - "http://localhost:5173"
+  - "http://127.0.0.1:5173"
+  - "http://localhost:8000"
+  - "http://127.0.0.1:8000"
+CSRF_TRUSTED_ORIGINS:
+  - "http://localhost:5173"
+  - "http://localhost:8000"
 DATABASE_URL: "sqlite:///./db.sqlite3"
 DJANGO_ENV: "development"
+ADMIN_EMAIL: "admin@example.com"
+PEAR_API_URL: "http://localhost:26538/api/v1"

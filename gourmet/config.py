@@ -62,6 +62,50 @@ class Config(GoodConf):
         default=["http://localhost:5173"],
         description="Allowed origins for CORS (e.g. frontend dev server)",
     )
+    CSRF_TRUSTED_ORIGINS: list[str] = Field(
+        default=[],
+        description="Trusted origins for CSRF (e.g. https://example.com)",
+    )
+    ADMIN_EMAIL: str = Field(
+        default="",
+        description="Email address for server error notifications",
+    )
+    EMAIL_HOST: str = Field(
+        default="localhost",
+        description="SMTP host for sending emails",
+    )
+    EMAIL_PORT: int = Field(
+        default=25,
+        description="SMTP port for sending emails",
+    )
+    EMAIL_HOST_USER: str = Field(
+        default="",
+        description="SMTP user for sending emails",
+    )
+    EMAIL_HOST_PASSWORD: str = Field(
+        default="",
+        description="SMTP password for sending emails",
+    )
+    EMAIL_USE_TLS: bool = Field(
+        default=False,
+        description="Enable TLS for SMTP",
+    )
+    EMAIL_USE_SSL: bool = Field(
+        default=False,
+        description="Enable SSL for SMTP",
+    )
+    DEFAULT_FROM_EMAIL: str = Field(
+        default="webmaster@localhost",
+        description="Default from address for emails",
+    )
+    SERVER_EMAIL: str = Field(
+        default="root@localhost",
+        description="Email address for system-generated error messages",
+    )
+    PEAR_API_URL: str = Field(
+        default="http://localhost:9863/api/v1",
+        description="URL for the Pear (Music Player Desktop) API",
+    )
 
     model_config = {"default_files": ["gourmet.yml"]}
 
