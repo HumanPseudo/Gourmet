@@ -1,14 +1,12 @@
 import os
 import socket
 import subprocess
+import sys
 import time
-import typing as t
+from collections.abc import Iterator
 
 import pytest
 from django.conf import settings
-
-if t.TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 def _wait_for_server(host: str, port: int, timeout: float = 10.0) -> None:
@@ -46,7 +44,9 @@ def server(
 
     proc = subprocess.Popen(  # noqa: S603
         [
-            "/app/.venv/bin/gunicorn",
+            sys.executable,
+            "-m",
+            "gunicorn",
             f"{settings.PROJECT_NAME}.wsgi",
             "-b",
             f"{host}:{port}",

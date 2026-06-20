@@ -1,9 +1,7 @@
-import typing as t
+from __future__ import annotations
 
 import requests
-
-if t.TYPE_CHECKING:
-    from django.conf import LazySettings
+from django.conf import LazySettings
 
 
 def test_admin_login_page(
@@ -18,4 +16,6 @@ def test_admin_login_page(
 def test_static_css_bundle(server: str) -> None:
     """Static CSS bundle is served."""
     response = requests.get(f"{server}/static/bundles/main.css", timeout=1)
-    assert response.status_code == 200
+    assert response.status_code == 200, (
+        f"Expected 200, got {response.status_code}: {response.text[:500]}"
+    )

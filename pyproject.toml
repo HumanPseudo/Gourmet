@@ -100,7 +100,7 @@ SENTRY_DSN = ""
 TEMPLATE_DEBUG = 1
 
 [tool.ruff]
-extend-exclude = ["migrations"]
+extend-exclude = ["migrations", "typings"]
 line-length = 88
 target-version = "py312"
 
