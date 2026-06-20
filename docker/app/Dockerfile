@@ -55,6 +55,9 @@ COPY --from=build-node ${MODULES_PATH}/htmx.org/dist/htmx.min.js ${VENDOR_PATH}/
 
 RUN SECRET_KEY=s python manage.py collectstatic --noinput
 
+COPY docker/app/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 8000
 ENV PORT=8000
 # assumes the server is running behind a reverse proxy (Nginx, AWS ALB, etc.)
@@ -67,4 +70,5 @@ ENV GUNICORN_CMD_ARGS="\
   --timeout=10 \
   "
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "$PROJECT_NAME.wsgi"]

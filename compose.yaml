@@ -23,6 +23,9 @@ services:
         - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
         - SECRET_KEY=not-secret
         - TEMPLATE_DEBUG=${TEMPLATE_DEBUG:-1}
+        - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-admin@example.com}
+        - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-admin}
+        - SUPERUSER_NAME=${SUPERUSER_NAME:-Admin}
       restart: on-failure
       depends_on:
         - db
