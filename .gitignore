@@ -11,3 +11,5 @@ db.sqlite3
 .env
 .DS_Store
 *.swp
+gourmet/staticfiles/
+resume.md
