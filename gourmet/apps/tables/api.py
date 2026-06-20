@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
 from gourmet.apps.accounts.auth import AdminTokenAuth
+from gourmet.apps.schemas import MessageOut
 
 from .models import Table
 
@@ -29,10 +30,6 @@ class TableIn(Schema):
     capacity: int = 4
     status: str = Table.Status.AVAILABLE
     is_active: bool = True
-
-
-class MessageOut(Schema):
-    detail: str
 
 
 # ── Helpers ────────────────────────────────────────────────────────────

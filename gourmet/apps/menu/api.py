@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
 from gourmet.apps.accounts.auth import AdminTokenAuth
+from gourmet.apps.schemas import MessageOut
 
 from .models import Category, Product
 
@@ -50,10 +51,6 @@ class ProductIn(Schema):
     price: Decimal
     is_available: bool = True
     sort_order: int = 0
-
-
-class MessageOut(Schema):
-    detail: str
 
 
 # ── Category endpoints ─────────────────────────────────────────────────

@@ -11,6 +11,9 @@ from ninja.types import DictStrAny
 
 from gourmet.apps.menu.api import router as menu_router
 from gourmet.apps.tables.api import router as tables_router
+from gourmet.apps.jukebox.api import router as jukebox_router
+
+from gourmet.apps.schemas import MessageOut
 
 from .auth import AdminTokenAuth, TokenAuth
 from .forms import CustomUserCreationForm
@@ -77,10 +80,6 @@ class UserIn(Schema):
     password: str | None = None
 
 
-class MessageOut(Schema):
-    detail: str
-
-
 # ── Helpers ────────────────────────────────────────────────────────────
 
 
@@ -142,9 +141,8 @@ def login_view(
     request: HttpRequest, payload: LoginIn
 ) -> tuple[int, dict[str, str | UserOut]]:
     user = authenticate(request, email=payload.email, password=payload.password)
-    if user is None:
+    if not isinstance(user, User):
         return 401, {"detail": "Invalid credentials"}
-    assert isinstance(user, User)
     token = AuthToken.create_token(user)
     return 200, {"token": token.key, "user": user_to_out(user)}
 
@@ -232,3 +230,4 @@ def get_user(request: HttpRequest, user_id: UUID) -> UserOut:
 api.add_router("/admin", admin_api, tags=["Admin"])
 api.add_router("/menu", menu_router, tags=["Menu"])
 api.add_router("/tables", tables_router, tags=["Tables"])
+api.add_router("/jukebox", jukebox_router, tags=["Jukebox"])
