@@ -16,7 +16,6 @@ dev = [
   "pytest-xdist==3.8.0",
   "pytest==9.0.3",
   "readable-log-formatter==0.1.4",
-  "requests==2.33.1",
   "ruff==0.15.13",
   "types-requests==2.33.0.20260408",
 ]
@@ -35,6 +34,7 @@ dependencies = [
   "gunicorn==25.3.0",
   "psycopg==3.3.3",
   "python-json-logger==4.1.0",
+  "requests==2.33.1",
   "sentry-sdk==2.58.0",
   "whitenoise==6.12.0",
   "wsgi-basic-auth==1.1.0",
@@ -83,6 +83,7 @@ module = [
 [tool.pytest.ini_options]
 addopts = [
   "--allow-hosts=127.0.0.1,localhost",
+  "--ds=gourmet.settings",
   "--allow-unix-socket",  # Allow async
   "--disable-socket",  # Prevent network calls.
   "--fail-on-template-vars",  # Yell at invalid variables in templates
