@@ -1,56 +1,26 @@
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from django.http import HttpRequest
-from django.shortcuts import get_object_or_404
-from ninja import Router, Schema
+from ninja import Router
 
 from gourmet.apps.accounts.auth import AdminTokenAuth
 from gourmet.apps.schemas import MessageOut
 
-from .models import Table
+from .schemas import TableIn, TableOut
+from .services import TableService
 
 router = Router(auth=None)
 
 
-# ── Schemas ────────────────────────────────────────────────────────────
-
-
-class TableOut(Schema):
-    id: UUID
-    code: str
-    capacity: int
-    status: str
-    is_active: bool
-
-
-class TableIn(Schema):
-    code: str
-    capacity: int = 4
-    status: str = Table.Status.AVAILABLE
-    is_active: bool = True
-
-
-# ── Helpers ────────────────────────────────────────────────────────────
-
-
-def table_to_out(t: Table) -> TableOut:
-    return TableOut(
-        id=t.pk,
-        code=t.code,
-        capacity=t.capacity,
-        status=t.status,
-        is_active=t.is_active,
-    )
-
-
-# ── Table endpoints ───────────────────────────────────────────────────
+# ── Table endpoints ────────────────────────────────────────────────────
 
 
 @router.get("", response=list[TableOut], summary="List all tables")
-def list_tables(request: HttpRequest) -> list[TableOut]:
-    return [table_to_out(t) for t in Table.objects.all().order_by("code")]
+def list_tables(request: HttpRequest) -> Any:
+    return TableService.list()
 
 
 @router.post(
@@ -62,21 +32,16 @@ def list_tables(request: HttpRequest) -> list[TableOut]:
 def create_table(
     request: HttpRequest, payload: TableIn
 ) -> tuple[int, TableOut] | tuple[int, dict[str, str]]:
-    if Table.objects.filter(code=payload.code).exists():
-        return 400, {"detail": "A table with this code already exists"}
-    table = Table.objects.create(
-        code=payload.code,
-        capacity=payload.capacity,
-        status=payload.status,
-        is_active=payload.is_active,
-    )
-    return 201, table_to_out(table)
+    try:
+        table = TableService.create(payload)
+    except ValueError as e:
+        return 400, {"detail": str(e)}
+    return 201, TableOut.model_validate(table)
 
 
 @router.get("/{table_id}", response=TableOut, summary="Get table by ID")
 def get_table(request: HttpRequest, table_id: UUID) -> TableOut:
-    table = get_object_or_404(Table, pk=table_id)
-    return table_to_out(table)
+    return TableOut.model_validate(TableService.get(table_id))
 
 
 @router.put(
@@ -85,14 +50,11 @@ def get_table(request: HttpRequest, table_id: UUID) -> TableOut:
     response=TableOut,
     summary="Update a table",
 )
-def update_table(request: HttpRequest, table_id: UUID, payload: TableIn) -> TableOut:
-    table = get_object_or_404(Table, pk=table_id)
-    table.code = payload.code
-    table.capacity = payload.capacity
-    table.status = payload.status
-    table.is_active = payload.is_active
-    table.save()
-    return table_to_out(table)
+def update_table(
+    request: HttpRequest, table_id: UUID, payload: TableIn
+) -> TableOut:
+    table = TableService.get(table_id)
+    return TableOut.model_validate(TableService.update(table, payload))
 
 
 @router.delete(
@@ -102,6 +64,6 @@ def update_table(request: HttpRequest, table_id: UUID, payload: TableIn) -> Tabl
     summary="Delete a table",
 )
 def delete_table(request: HttpRequest, table_id: UUID) -> dict[str, str]:
-    table = get_object_or_404(Table, pk=table_id)
-    table.delete()
+    table = TableService.get(table_id)
+    TableService.delete(table)
     return {"detail": "Table deleted"}

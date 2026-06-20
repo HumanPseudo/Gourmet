@@ -75,6 +75,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
+    "gourmet.apps.middleware.RequestIDMiddleware",
 ]
 
 ROOT_URLCONF = f"{PROJECT_NAME}.urls"
@@ -155,7 +156,9 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
-STATIC_ROOT = Path("/var/www/staticfiles")
+STATIC_ROOT = BASE_DIR / PROJECT_NAME / "staticfiles"
+
+_HAS_MANIFEST = (STATIC_ROOT / "staticfiles.json").exists()
 
 STATICFILES_DIRS = [
     _dir
@@ -175,7 +178,11 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            if config.DJANGO_ENV == "production" and _HAS_MANIFEST
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
+        ),
     },
 }
 
@@ -243,6 +250,12 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     },
+}
+
+# Django Ninja throttling
+NINJA_DEFAULT_THROTTLE_RATES: dict[str, str] = {
+    "anon": "100/m",
+    "auth": "60/m",
 }
 
 # Session

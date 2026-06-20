@@ -6,26 +6,29 @@ from django.conf import settings
 from django.test import RequestFactory, TestCase
 
 from gourmet.apps.jukebox.api import (
-    add_to_custom_queue_and_play,
     add_to_custom_queue,
-    SearchIn,
-    SearchResultOut,
-    _token_cache,
-    filter_search_results,
-    proxy_request,
-    QueueItemIn,
-    reconcile_custom_queue,
+    add_to_custom_queue_and_play,
     push_to_pear,
+    reconcile_custom_queue,
     search,
-    sync_queue_to_player,
 )
 from gourmet.apps.jukebox.models import JukeboxQueueItem
+from gourmet.apps.jukebox.schemas import (
+    QueueItemIn,
+    QueueItemOut,
+    SearchIn,
+    SearchResultOut,
+)
+from gourmet.apps.jukebox.services import JukeboxService
+
+SERVICE_PATH = "gourmet.apps.jukebox.services.JukeboxService"
+REQUESTS_PATH = "gourmet.apps.jukebox.services"
 
 
 class SearchEndpointTests(TestCase):
     def setUp(self) -> None:
         self.factory = RequestFactory()
-        _token_cache.clear()
+        JukeboxService._token_cache.clear()
 
     def test_filter_search_results_extracts_music_cards(self) -> None:
         payload = {
@@ -54,10 +57,10 @@ class SearchEndpointTests(TestCase):
                                                     "title": {
                                                         "runs": [
                                                             {
-                                                                "text": "Stereo Love (Extended Mix)",
+                                                                "text": "Stereo Love (Extended Mix)",  # noqa: E501
                                                                 "navigationEndpoint": {
                                                                     "watchEndpoint": {
-                                                                        "videoId": "p-Z3YrHJ1sU"
+                                                                        "videoId": "p-Z3YrHJ1sU"  # noqa: E501
                                                                     }
                                                                 },
                                                             }
@@ -66,7 +69,7 @@ class SearchEndpointTests(TestCase):
                                                     "subtitle": {
                                                         "accessibility": {
                                                             "accessibilityData": {
-                                                                "label": "Video • Edward Maya & Vika Jigulina • 761 million views • 4 minutes, 13 seconds"
+                                                                "label": "Video • Edward Maya & Vika Jigulina • 761 million views • 4 minutes, 13 seconds"  # noqa: E501
                                                             }
                                                         },
                                                         "runs": [
@@ -93,7 +96,7 @@ class SearchEndpointTests(TestCase):
             },
         }
 
-        assert filter_search_results(payload) == [
+        assert JukeboxService.filter_search_results(payload) == [
             SearchResultOut(
                 video_id="p-Z3YrHJ1sU",
                 title="Stereo Love (Extended Mix)",
@@ -120,10 +123,10 @@ class SearchEndpointTests(TestCase):
                                                     "title": {
                                                         "runs": [
                                                             {
-                                                                "text": "Stereo Love (Extended Mix)",
+                                                                "text": "Stereo Love (Extended Mix)",  # noqa: E501
                                                                 "navigationEndpoint": {
                                                                     "watchEndpoint": {
-                                                                        "videoId": "p-Z3YrHJ1sU"
+                                                                        "videoId": "p-Z3YrHJ1sU"  # noqa: E501
                                                                     }
                                                                 },
                                                             }
@@ -132,7 +135,7 @@ class SearchEndpointTests(TestCase):
                                                     "subtitle": {
                                                         "accessibility": {
                                                             "accessibilityData": {
-                                                                "label": "Video • Edward Maya & Vika Jigulina • 761 million views • 4 minutes, 13 seconds"
+                                                                "label": "Video • Edward Maya & Vika Jigulina • 761 million views • 4 minutes, 13 seconds"  # noqa: E501
                                                             }
                                                         }
                                                     },
@@ -160,7 +163,7 @@ class SearchEndpointTests(TestCase):
         }
 
         with patch(
-            "gourmet.apps.jukebox.api.proxy_request",
+            f"{SERVICE_PATH}.proxy_request",
             return_value=(200, upstream_response),
         ):
             result = search(request, payload)
@@ -175,8 +178,8 @@ class SearchEndpointTests(TestCase):
             )
         ]
 
-    @patch("gourmet.apps.jukebox.api.requests.request")
-    @patch("gourmet.apps.jukebox.api.requests.post")
+    @patch(f"{REQUESTS_PATH}.requests.request")
+    @patch(f"{REQUESTS_PATH}.requests.post")
     def test_proxy_request_uses_api_server_token(
         self,
         requests_post: Mock,
@@ -193,14 +196,15 @@ class SearchEndpointTests(TestCase):
             text="",
         )
 
-        status, data = proxy_request("POST", "search", json={"query": "hello"})
+        status, data = JukeboxService.proxy_request(
+            "POST", "search", json={"query": "hello"}
+        )
 
         assert status == 200
         assert data == {"results": []}
-        requests_post.assert_called_once_with(
-            f"{settings.PEAR_API_URL.split('/api/', 1)[0]}/auth/{settings.PROJECT_NAME}",
-            timeout=5,
-        )
+        base_url = settings.PEAR_API_URL.split("/api/", 1)[0]
+        auth_url = f"{base_url}/auth/{settings.PROJECT_NAME}"
+        requests_post.assert_called_once_with(auth_url, timeout=5)
         requests_request.assert_called_once_with(
             "POST",
             f"{settings.PEAR_API_URL.rstrip('/')}/search",
@@ -228,14 +232,14 @@ class SearchEndpointTests(TestCase):
         )
 
         with patch(
-            "gourmet.apps.jukebox.api.proxy_request",
+            f"{SERVICE_PATH}.proxy_request",
             side_effect=[
                 (204, None),
                 (204, None),
                 (204, None),
             ],
         ) as proxy_request_mock:
-            status, data = sync_queue_to_player()
+            status, data = JukeboxService.sync_queue_to_player()
 
         assert status == 204
         assert data is None
@@ -256,12 +260,12 @@ class SearchEndpointTests(TestCase):
         }
 
         with patch(
-            "gourmet.apps.jukebox.api.proxy_request",
+            f"{SERVICE_PATH}.proxy_request",
             side_effect=[
-                (204, None),  # sync delete
-                (204, None),  # sync add created item
-                (204, None),  # set queue index
-                (204, None),  # play
+                (204, None),
+                (204, None),
+                (204, None),
+                (204, None),
             ],
         ) as proxy_request_mock:
             status, item = add_to_custom_queue_and_play(
@@ -270,6 +274,7 @@ class SearchEndpointTests(TestCase):
             )
 
         assert status == 201
+        assert isinstance(item, QueueItemOut)
         assert item.video_id == "p-Z3YrHJ1sU"
         assert item.status == JukeboxQueueItem.STATUS_PLAYING
         assert JukeboxQueueItem.objects.count() == 1
@@ -291,7 +296,7 @@ class SearchEndpointTests(TestCase):
         )
 
         with patch(
-            "gourmet.apps.jukebox.api.proxy_request",
+            f"{SERVICE_PATH}.proxy_request",
             return_value=(503, {"detail": "Pear API unreachable"}),
         ) as proxy_request_mock:
             status, item = add_to_custom_queue(request, payload)
@@ -322,14 +327,14 @@ class SearchEndpointTests(TestCase):
         request = self.factory.post(f"/api/jukebox/queue/{selected.id}/push")
 
         with patch(
-            "gourmet.apps.jukebox.api.proxy_request",
+            f"{SERVICE_PATH}.proxy_request",
             side_effect=[
-                (204, None),  # sync delete
-                (204, None),  # sync add one
-                (204, None),  # sync add two
-                (204, None),  # sync add three
-                (204, None),  # set queue index
-                (204, None),  # play
+                (204, None),
+                (204, None),
+                (204, None),
+                (204, None),
+                (204, None),
+                (204, None),
             ],
         ) as proxy_request_mock:
             result = push_to_pear(request, selected.id)
@@ -344,7 +349,7 @@ class SearchEndpointTests(TestCase):
             call("POST", "play"),
         ]
 
-    def test_reconcile_custom_queue_marks_playing_item_as_played_when_player_has_no_song(
+    def test_reconcile_marks_playing_as_played_when_player_has_no_song(
         self,
     ) -> None:
         first = JukeboxQueueItem.objects.create(
@@ -362,18 +367,23 @@ class SearchEndpointTests(TestCase):
         request = self.factory.post("/api/jukebox/queue/reconcile")
 
         with patch(
-            "gourmet.apps.jukebox.api.proxy_request",
+            f"{SERVICE_PATH}.proxy_request",
             return_value=(204, None),
         ) as proxy_request_mock:
             result = reconcile_custom_queue(request)
 
         first.refresh_from_db()
-        if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], int):
+        if (
+            isinstance(result, tuple)
+            and len(result) == 2
+            and isinstance(result[0], int)
+        ):
             status, items = result
         else:
             status, items = 200, result
         assert status == 200
         assert first.status == JukeboxQueueItem.STATUS_PLAYED
+        assert isinstance(items, list)
         assert [item.video_id for item in items] == ["one", "two"]
         assert proxy_request_mock.call_args_list == [call("GET", "song")]
 
@@ -398,18 +408,23 @@ class SearchEndpointTests(TestCase):
         request = self.factory.post("/api/jukebox/queue/reconcile")
 
         with patch(
-            "gourmet.apps.jukebox.api.proxy_request",
+            f"{SERVICE_PATH}.proxy_request",
             return_value=(200, {"videoId": "two"}),
         ) as proxy_request_mock:
             result = reconcile_custom_queue(request)
 
         queued.refresh_from_db()
-        if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], int):
+        if (
+            isinstance(result, tuple)
+            and len(result) == 2
+            and isinstance(result[0], int)
+        ):
             status, items = result
         else:
             status, items = 200, result
         assert status == 200
         assert queued.status == JukeboxQueueItem.STATUS_PLAYING
+        assert isinstance(items, list)
         assert [item.status for item in items] == [
             JukeboxQueueItem.STATUS_PLAYED,
             JukeboxQueueItem.STATUS_PLAYING,

@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 from django.test import TestCase, override_settings
-from django.urls import reverse
 
 from gourmet.apps.accounts.models import AuthToken, Role, User
 
@@ -203,7 +202,8 @@ class AdminEndpointTests(TestCase):
     def test_list_users(self) -> None:
         result = self._get("/api/admin/users")
         assert result["status"] == 200
-        assert any(u["email"] == "admin@test.com" for u in result["data"])
+        items = result["data"].get("items", result["data"])
+        assert any(u["email"] == "admin@test.com" for u in items)
 
     def test_get_user(self) -> None:
         result = self._get(f"/api/admin/users/{self.admin.pk}")

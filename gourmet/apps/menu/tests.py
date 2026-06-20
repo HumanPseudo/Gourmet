@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 
 from django.test import TestCase
 
@@ -89,12 +90,13 @@ class MenuAPITests(TestCase):
 
     def test_list_products(self) -> None:
         Product.objects.create(
-            category=self.cat, name="Cola", price="2.50"
+            category=self.cat, name="Cola", price=Decimal("2.50")
         )
         result = self._get("/api/menu/products")
         assert result["status"] == 200
-        assert len(result["data"]) == 1
-        assert result["data"][0]["name"] == "Cola"
+        items = result["data"].get("items", result["data"])
+        assert len(items) == 1
+        assert items[0]["name"] == "Cola"
 
     def test_create_product(self) -> None:
         result = self._post(
@@ -110,7 +112,7 @@ class MenuAPITests(TestCase):
 
     def test_get_product(self) -> None:
         product = Product.objects.create(
-            category=self.cat, name="Water", price="1.50"
+            category=self.cat, name="Water", price=Decimal("1.50")
         )
         result = self._get(f"/api/menu/products/{product.pk}")
         assert result["status"] == 200
@@ -118,7 +120,7 @@ class MenuAPITests(TestCase):
 
     def test_update_product(self) -> None:
         product = Product.objects.create(
-            category=self.cat, name="Juice", price="2.00"
+            category=self.cat, name="Juice", price=Decimal("2.00")
         )
         result = self._put(
             f"/api/menu/products/{product.pk}",
@@ -133,7 +135,7 @@ class MenuAPITests(TestCase):
 
     def test_delete_product(self) -> None:
         product = Product.objects.create(
-            category=self.cat, name="Tea", price="1.00"
+            category=self.cat, name="Tea", price=Decimal("1.00")
         )
         result = self._delete(f"/api/menu/products/{product.pk}")
         assert result["status"] == 200
@@ -147,7 +149,9 @@ class MenuAPITests(TestCase):
         headers = {"content_type": "application/json"}
         response = self.client.post(
             "/api/menu/products",
-            data=json.dumps({"category_id": str(self.cat.pk), "name": "Hack", "price": "0"}),
+            data=json.dumps(
+                {"category_id": str(self.cat.pk), "name": "Hack", "price": "0"}
+            ),
             **headers,  # type: ignore[arg-type]
         )
         assert response.status_code == 401
