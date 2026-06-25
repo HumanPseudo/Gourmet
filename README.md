@@ -2,6 +2,12 @@
 
 # gourmet
 
+POS system for restaurant management.
+
+**Features:** menu management, restaurant tables, order workflow (open → close), kitchen display, inventory tracking (items, recipes, movements), jukebox queue with remote player, role-based staff accounts, token-authenticated REST API.
+
+**Stack:** Django + Ninja API, PostgreSQL, Tailwind CSS, HTMX, Docker.
+
 ## Requirements
 
 - Docker
@@ -26,10 +32,12 @@ Open http://localhost:8000/.
 
 ### Admin access
 
-Create super user:
-
 ```bash
-docker compose run --rm app python manage.py createsuperuser
+# Create superuser (admin@example.com / admin)
+docker compose run --rm app python manage.py ensure_superuser
+
+# Or seed demo data (roles, users, tables, menu items)
+docker compose run --rm app python manage.py seed
 ```
 
 Access http://localhost:8000/gourmet-admin/.
