@@ -5,6 +5,7 @@ from uuid import UUID
 
 from django.http import HttpRequest
 from ninja import Router
+from ninja.pagination import paginate
 
 from gourmet.apps.accounts.auth import AdminTokenAuth
 from gourmet.apps.schemas import MessageOut
@@ -19,6 +20,7 @@ router = Router(auth=None)
 
 
 @router.get("", response=list[TableOut], summary="List all tables")
+@paginate
 def list_tables(request: HttpRequest) -> Any:
     return TableService.list()
 
@@ -47,14 +49,18 @@ def get_table(request: HttpRequest, table_id: UUID) -> TableOut:
 @router.put(
     "/{table_id}",
     auth=AdminTokenAuth(),
-    response=TableOut,
+    response={200: TableOut, 400: MessageOut},
     summary="Update a table",
 )
 def update_table(
     request: HttpRequest, table_id: UUID, payload: TableIn
-) -> TableOut:
+) -> tuple[int, TableOut | dict[str, str]]:
     table = TableService.get(table_id)
-    return TableOut.model_validate(TableService.update(table, payload))
+    try:
+        updated = TableService.update(table, payload)
+    except ValueError as e:
+        return 400, {"detail": str(e)}
+    return 200, TableOut.model_validate(updated)
 
 
 @router.delete(

@@ -58,7 +58,8 @@ class TableAPITests(TestCase):
         Table.objects.create(code="T2", capacity=2)
         result = self._get("/api/tables")
         assert result["status"] == 200
-        assert len(result["data"]) == 2
+        assert result["data"]["count"] == 2
+        assert len(result["data"]["items"]) == 2
 
     def test_create_table(self) -> None:
         result = self._post("/api/tables", {"code": "T3", "capacity": 6})

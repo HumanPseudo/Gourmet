@@ -435,6 +435,7 @@ dependencies = [
     { name = "gunicorn" },
     { name = "psycopg" },
     { name = "python-json-logger" },
+    { name = "requests" },
     { name = "sentry-sdk" },
     { name = "whitenoise" },
     { name = "wsgi-basic-auth" },
@@ -458,7 +459,6 @@ dev = [
     { name = "pytest-socket" },
     { name = "pytest-xdist" },
     { name = "readable-log-formatter" },
-    { name = "requests" },
     { name = "ruff" },
     { name = "types-requests" },
 ]
@@ -477,6 +477,7 @@ requires-dist = [
     { name = "gunicorn", specifier = "==25.3.0" },
     { name = "psycopg", specifier = "==3.3.3" },
     { name = "python-json-logger", specifier = "==4.1.0" },
+    { name = "requests", specifier = "==2.33.1" },
     { name = "sentry-sdk", specifier = "==2.58.0" },
     { name = "whitenoise", specifier = "==6.12.0" },
     { name = "wsgi-basic-auth", specifier = "==1.1.0" },
@@ -500,7 +501,6 @@ dev = [
     { name = "pytest-socket", specifier = "==0.7.0" },
     { name = "pytest-xdist", specifier = "==3.8.0" },
     { name = "readable-log-formatter", specifier = "==0.1.4" },
-    { name = "requests", specifier = "==2.33.1" },
     { name = "ruff", specifier = "==0.15.13" },
     { name = "types-requests", specifier = "==2.33.0.20260408" },
 ]

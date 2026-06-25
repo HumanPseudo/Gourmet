@@ -14,6 +14,15 @@
             <p><strong>Teléfono:</strong> {{ user.number|default:"No especificado" }}</p>
             <p><strong>Rol:</strong> {{ user.role.name|default:"Sin rol asignado" }}</p>
         </div>
+        {% if user.is_staff %}
+            <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+                <a href="{% url 'kitchen' %}" style="background: #17a2b8; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">🍳 Cocina</a>
+                <a href="{% url 'order_list' %}" style="background: #28a745; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">📋 Órdenes</a>
+                <a href="{% url 'create_order' %}" style="background: #007bff; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">➕ Nueva orden</a>
+                <a href="{% url 'inventory_list' %}" style="background: #ffc107; color: #333; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">📦 Inventario</a>
+                <a href="{% url 'admin:index' %}" style="background: #6c757d; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">⚙ Admin</a>
+            </div>
+        {% endif %}
     {% else %}
         <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border: 1px solid #ffeeba;">
             <p>Por favor, <a href="{% url 'login' %}">inicia sesión</a> para acceder a las funciones del sistema.</p>

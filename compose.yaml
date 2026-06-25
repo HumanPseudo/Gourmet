@@ -4,32 +4,31 @@ services:
     # yamllint disable-line rule:line-length
     image: postgres:18-alpine@sha256:54451ecb8ab38c24c3ec123f2fd501303a3a1856a5c66e98cecf2460d5e1e9d7
     environment:
-      - POSTGRES_PASSWORD=postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
       - pgdata:/var/lib/postgresql
       - .data/db_dumps:/db_dumps
 
   app:
-    <<: &COMMON
-      build:
-        args:
-          - PROJECT_NAME
-        context: .
-        dockerfile: docker/app/Dockerfile
-        target: build-python
-      environment:
-        - DEBUG=${DEBUG:-1}
-        - DJANGO_ENV=${DJANGO_ENV:-development}
-        - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
-        - SECRET_KEY=not-secret
-        - TEMPLATE_DEBUG=${TEMPLATE_DEBUG:-1}
-        - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-admin@example.com}
-        - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-admin}
-        - SUPERUSER_NAME=${SUPERUSER_NAME:-Admin}
-      restart: on-failure
-      depends_on:
-        - db
-        - tailwind
+    build:
+      args:
+        - PROJECT_NAME
+      context: .
+      dockerfile: docker/app/Dockerfile
+      target: build-python
+    environment:
+      DEBUG: ${DEBUG:-1}
+      DJANGO_ENV: ${DJANGO_ENV:-development}
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+      SECRET_KEY: not-secret
+      TEMPLATE_DEBUG: ${TEMPLATE_DEBUG:-1}
+      SUPERUSER_EMAIL: ${SUPERUSER_EMAIL:-admin@example.com}
+      SUPERUSER_PASSWORD: ${SUPERUSER_PASSWORD:-admin}
+      SUPERUSER_NAME: ${SUPERUSER_NAME:-Admin}
+    restart: on-failure
+    depends_on:
+      - db
+      - tailwind
     command: python manage.py runserver 0.0.0.0:8000
     ports:
       - ${PORT:-8000}:8000
@@ -51,7 +50,7 @@ services:
     stop_grace_period: 0s
     volumes:
       - ./:/app
-      - /app/node_modules # node_modules is not shared with the host
+      - /app/node_modules
 
   prettier:
     build:

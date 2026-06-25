@@ -59,7 +59,8 @@ class MenuAPITests(TestCase):
         Category.objects.create(name="Food", sort_order=0)
         result = self._get("/api/menu/categories")
         assert result["status"] == 200
-        assert len(result["data"]) == 2
+        assert result["data"]["count"] == 2
+        assert len(result["data"]["items"]) == 2
 
     def test_create_category(self) -> None:
         result = self._post("/api/menu/categories", {"name": "Desserts"})

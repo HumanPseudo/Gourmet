@@ -10,8 +10,10 @@ from ninja.throttling import AnonRateThrottle, AuthRateThrottle
 from ninja.types import DictStrAny
 
 from gourmet.apps.exceptions import register_exception_handlers
+from gourmet.apps.inventory.api import router as inventory_router
 from gourmet.apps.jukebox.api import router as jukebox_router
 from gourmet.apps.menu.api import router as menu_router
+from gourmet.apps.orders.api import router as orders_router
 from gourmet.apps.schemas import MessageOut
 from gourmet.apps.tables.api import router as tables_router
 
@@ -101,6 +103,7 @@ def me(
 
 
 @admin_api.get("/roles", response=list[RoleOut], summary="List all roles")
+@paginate
 def list_roles(request: HttpRequest) -> Any:
     return RoleService.list()
 
@@ -128,13 +131,19 @@ def get_role(request: HttpRequest, role_id: UUID) -> Role:
 
 
 @admin_api.put(
-    "/roles/{role_id}", response=RoleOut, summary="Update a role"
+    "/roles/{role_id}",
+    response={200: RoleOut, 400: MessageOut},
+    summary="Update a role",
 )
 def update_role(
     request: HttpRequest, role_id: UUID, payload: RoleIn
-) -> Role:
+) -> tuple[int, RoleOut | dict[str, str]]:
     role = RoleService.get(role_id)
-    return RoleService.update(role, payload)
+    try:
+        updated = RoleService.update(role, payload)
+    except ValueError as e:
+        return 400, {"detail": str(e)}
+    return 200, RoleOut.model_validate(updated)
 
 
 @admin_api.delete(
@@ -165,3 +174,5 @@ api.add_router("/admin", admin_api, tags=["Admin"])
 api.add_router("/menu", menu_router, tags=["Menu"])
 api.add_router("/tables", tables_router, tags=["Tables"])
 api.add_router("/jukebox", jukebox_router, tags=["Jukebox"])
+api.add_router("/inventory", inventory_router, tags=["Inventory"])
+api.add_router("/orders", orders_router, tags=["Orders"])

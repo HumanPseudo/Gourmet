@@ -31,6 +31,8 @@ class TableService:
 
     @staticmethod
     def update(table: Table, data: TableIn) -> Table:
+        if data.code != table.code and Table.objects.filter(code=data.code).exists():
+            raise ValueError("A table with this code already exists")
         table.code = data.code
         table.capacity = data.capacity
         table.status = data.status

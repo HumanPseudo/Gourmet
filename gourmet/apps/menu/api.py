@@ -23,6 +23,7 @@ router = Router(auth=None)
 @router.get(
     "/categories", response=list[CategoryOut], summary="List all categories"
 )
+@paginate
 def list_categories(request: HttpRequest) -> Any:
     return CategoryService.list()
 
@@ -55,14 +56,18 @@ def get_category(request: HttpRequest, category_id: UUID) -> CategoryOut:
 @router.put(
     "/categories/{category_id}",
     auth=AdminTokenAuth(),
-    response=CategoryOut,
+    response={200: CategoryOut, 400: MessageOut},
     summary="Update a category",
 )
 def update_category(
     request: HttpRequest, category_id: UUID, payload: CategoryIn
-) -> CategoryOut:
+) -> tuple[int, CategoryOut | dict[str, str]]:
     cat = CategoryService.get(category_id)
-    return CategoryOut.model_validate(CategoryService.update(cat, payload))
+    try:
+        updated = CategoryService.update(cat, payload)
+    except ValueError as e:
+        return 400, {"detail": str(e)}
+    return 200, CategoryOut.model_validate(updated)
 
 
 @router.delete(

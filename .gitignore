@@ -13,3 +13,9 @@ db.sqlite3
 *.swp
 gourmet/staticfiles/
 resume.md
+.mypy_cache/
+.pytest_cache/
+node_modules/
+.agents/
+.codex/
+.data/

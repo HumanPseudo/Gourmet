@@ -20,6 +20,15 @@ from django.urls import URLPattern, URLResolver, include, path
 from django.views.generic import TemplateView
 
 from gourmet.apps.accounts.api import api
+from gourmet.apps.inventory.views import inventory_list, movement_list, recipe_list
+from gourmet.apps.orders.views import (
+    add_payment,
+    close_order,
+    create_order,
+    kitchen,
+    order_detail,
+    order_list,
+)
 
 handler400 = "gourmet.views.bad_request"
 handler403 = "gourmet.views.permission_denied"
@@ -39,4 +48,13 @@ urlpatterns: list[URLPattern | URLResolver] = [
         ),
         name="index",
     ),
+    path("pos/kitchen/", kitchen, name="kitchen"),
+    path("pos/orders/", order_list, name="order_list"),
+    path("pos/orders/create/", create_order, name="create_order"),
+    path("pos/orders/<uuid:order_id>/", order_detail, name="order_detail"),
+    path("pos/orders/<uuid:order_id>/pay/", add_payment, name="add_payment"),
+    path("pos/orders/<uuid:order_id>/close/", close_order, name="close_order"),
+    path("pos/inventory/", inventory_list, name="inventory_list"),
+    path("pos/inventory/movements/", movement_list, name="movement_list"),
+    path("pos/inventory/recipes/", recipe_list, name="recipe_list"),
 ]

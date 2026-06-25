@@ -203,6 +203,7 @@ class JukeboxService:
         return cls.play_queue_index(index)
 
     @classmethod
+    @transaction.atomic
     def promote_queue_item(cls, item_id: UUID) -> None:
         JukeboxQueueItem.objects.filter(
             status=JukeboxQueueItem.STATUS_PLAYING,
@@ -282,6 +283,7 @@ class JukeboxService:
         JukeboxQueueItem.objects.all().delete()
 
     @classmethod
+    @transaction.atomic
     def remove_queue_item(cls, item_id: UUID) -> JukeboxQueueItem:
         item = get_object_or_404(JukeboxQueueItem, id=item_id)
         was_playing = item.status == JukeboxQueueItem.STATUS_PLAYING

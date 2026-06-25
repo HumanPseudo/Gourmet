@@ -31,6 +31,11 @@ class CategoryService:
 
     @staticmethod
     def update(category: Category, data: CategoryIn) -> Category:
+        if (
+            data.name != category.name
+            and Category.objects.filter(name=data.name).exists()
+        ):
+            raise ValueError("A category with this name already exists")
         category.name = data.name
         category.description = data.description
         category.sort_order = data.sort_order

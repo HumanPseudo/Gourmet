@@ -177,7 +177,8 @@ class AdminEndpointTests(TestCase):
         Role.objects.create(name="Server")
         result = self._get("/api/admin/roles")
         assert result["status"] == 200
-        assert len(result["data"]) == 2
+        assert result["data"]["count"] == 2
+        assert len(result["data"]["items"]) == 2
 
     def test_get_role(self) -> None:
         role = Role.objects.create(name="Bartender")

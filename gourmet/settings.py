@@ -61,6 +61,8 @@ INSTALLED_APPS = [
     "gourmet.apps.menu",
     "gourmet.apps.tables",
     "gourmet.apps.jukebox",
+    "gourmet.apps.orders",
+    "gourmet.apps.inventory",
 ]
 
 MIDDLEWARE = [
@@ -79,8 +81,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = f"{PROJECT_NAME}.urls"
-
-ASGI_APPLICATION = f"{PROJECT_NAME}.asgi.application"
 
 TEMPLATES: list[dict[str, Any]] = [
     {
@@ -216,6 +216,7 @@ REFERRER_POLICY = "same-origin"
 
 CORS_ALLOWED_ORIGINS = config.CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
+
 
 CSRF_TRUSTED_ORIGINS = config.CSRF_TRUSTED_ORIGINS
 

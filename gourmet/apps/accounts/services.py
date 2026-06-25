@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from django.contrib.auth import authenticate
@@ -14,16 +15,16 @@ from .schemas import RegisterIn, RoleIn, UserIn
 class UserService:
     @staticmethod
     def register(data: RegisterIn) -> tuple[User, AuthToken]:
-        form = CustomUserCreationForm(
-            {
-                "email": data.email,
-                "name": data.name,
-                "number": data.number,
-                "password1": data.password,
-                "password2": data.password,
-                "role_id": data.role_id,
-            }
-        )
+        form_data: dict[str, Any] = {
+            "email": data.email,
+            "name": data.name,
+            "number": data.number,
+            "password1": data.password,
+            "password2": data.password,
+        }
+        if data.role_id:
+            form_data["role"] = data.role_id
+        form = CustomUserCreationForm(form_data)
         if not form.is_valid():
             errors = "; ".join(
                 f"{k}: {', '.join(str(e) for e in v)}"
@@ -80,6 +81,8 @@ class RoleService:
 
     @staticmethod
     def update(role: Role, data: RoleIn) -> Role:
+        if data.name != role.name and Role.objects.filter(name=data.name).exists():
+            raise ValueError("Role with this name already exists")
         role.name = data.name
         role.description = data.description
         role.save()

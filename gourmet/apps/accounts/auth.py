@@ -10,9 +10,12 @@ from .models import AuthToken
 class TokenAuth(HttpBearer):
     def authenticate(self, request: HttpRequest, token: str) -> Any:
         try:
-            return AuthToken.objects.select_related("user").get(key=token).user
+            user = AuthToken.objects.select_related("user").get(key=token).user
         except AuthToken.DoesNotExist:
-            pass
+            return None
+        if not user.is_active:
+            return None
+        return user
 
 
 class AdminTokenAuth(TokenAuth):

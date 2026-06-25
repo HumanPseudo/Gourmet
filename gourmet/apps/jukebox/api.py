@@ -7,13 +7,14 @@ from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
+from gourmet.apps.accounts.auth import TokenAuth
 from gourmet.apps.schemas import MessageOut
 
 from .models import JukeboxQueueItem
 from .schemas import QueueItemIn, QueueItemOut, SearchIn, SearchResultOut
 from .services import JukeboxService
 
-router = Router(tags=["Jukebox"], auth=None)
+router = Router(tags=["Jukebox"], auth=TokenAuth())
 
 
 # ── Pear Proxy Endpoints ───────────────────────────────────────────────
@@ -152,6 +153,7 @@ def remove_from_custom_queue(
     request: HttpRequest, item_id: UUID
 ) -> tuple[int, MessageOut]:
     JukeboxService.remove_queue_item(item_id)
+    JukeboxService.best_effort_sync_queue_to_player()
     return 200, MessageOut(detail="Item removed from queue")
 
 
