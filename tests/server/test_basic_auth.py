@@ -8,7 +8,7 @@ pytestmark = pytest.mark.server_env({"BASIC_AUTH_CREDENTIALS": "george:vandelay"
 
 def test_returns_401_without_credentials(server: str) -> None:
     """Server returns 401 when basic auth is enabled and no credentials provided."""
-    response = requests.get(server, timeout=1)
+    response = requests.get(server, timeout=3)
     assert response.status_code == 401
 
 

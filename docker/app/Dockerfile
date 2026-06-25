@@ -71,4 +71,4 @@ ENV GUNICORN_CMD_ARGS="\
   "
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["gunicorn", "$PROJECT_NAME.wsgi"]
+CMD ["gunicorn", "gourmet.wsgi"]

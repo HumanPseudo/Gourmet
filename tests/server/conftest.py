@@ -38,6 +38,7 @@ def server(
     host = "127.0.0.1"
     port = 8100 + (0 if worker_id == "master" else int(worker_id.replace("gw", "")))
     env = os.environ.copy()
+    env["GUNICORN_CMD_ARGS"] = ""
 
     for marker in request.node.iter_markers("server_env"):
         env.update(marker.args[0])

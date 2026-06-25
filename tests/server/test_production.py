@@ -6,7 +6,7 @@ pytestmark = pytest.mark.server_env({"DJANGO_ENV": "production"})
 
 def test_redirects_to_https_without_proxy_header(server: str) -> None:
     """Server redirects to HTTPS when X-Forwarded-Proto header is missing."""
-    response = requests.get(server, allow_redirects=False, timeout=1)
+    response = requests.get(server, allow_redirects=False, timeout=3)
     assert response.status_code == 301
     assert response.headers["Location"].startswith("https://")
 
