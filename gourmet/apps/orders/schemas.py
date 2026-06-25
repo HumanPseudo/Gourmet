@@ -23,7 +23,7 @@ class OrderItemOut(Schema):
     product_name: str
     product_price: Decimal
     quantity: int
-    notes: str
+    notes: str = ""
     status: str
     created_at: datetime
     updated_at: datetime
@@ -54,7 +54,7 @@ class OrderOut(Schema):
     status: str
     subtotal: Decimal
     total: Decimal
-    notes: str
+    notes: str = ""
     items: list[OrderItemOut]
     payments: list[PaymentOut]
     created_at: datetime
@@ -68,6 +68,6 @@ class KitchenItemOut(Schema):
     product_name: str
     product_price: Decimal
     quantity: int
-    notes: str
+    notes: str = ""
     status: str
     created_at: datetime

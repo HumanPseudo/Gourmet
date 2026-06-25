@@ -39,8 +39,8 @@ class Order(models.Model):
     total: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
-    notes: models.TextField[str | None, str | None] = models.TextField(
-        blank=True, null=True
+    notes: models.TextField[str, str] = models.TextField(
+        blank=True, default=""
     )
     created_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now_add=True)
     updated_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now=True)
@@ -82,8 +82,8 @@ class OrderItem(models.Model):
     quantity: models.PositiveSmallIntegerField[int, int] = (
         models.PositiveSmallIntegerField(default=1)
     )
-    notes: models.TextField[str | None, str | None] = models.TextField(
-        blank=True, null=True
+    notes: models.TextField[str, str] = models.TextField(
+        blank=True, default=""
     )
     status: models.CharField[str, str] = models.CharField(
         max_length=16,

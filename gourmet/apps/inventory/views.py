@@ -1,7 +1,7 @@
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
-from .models import InventoryItem, InventoryMovement, ProductRecipe
+from .models import InventoryItem
 from .services import InventoryService
 
 
@@ -17,19 +17,15 @@ def inventory_list(request):
 
 @staff_member_required
 def movement_list(request):
-    movements = (
-        InventoryMovement.objects
-        .select_related("item")
-        .order_by("-created_at")
+    return render(
+        request, "pos/movements.html",
+        {"movements": InventoryService.list_movements()},
     )
-    return render(request, "pos/movements.html", {"movements": movements})
 
 
 @staff_member_required
 def recipe_list(request):
-    recipes = (
-        ProductRecipe.objects
-        .select_related("product__category", "item")
-        .order_by("product__name", "item__name")
+    return render(
+        request, "pos/recipes.html",
+        {"recipes": InventoryService.list_recipes()},
     )
-    return render(request, "pos/recipes.html", {"recipes": recipes})

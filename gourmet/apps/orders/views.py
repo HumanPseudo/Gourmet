@@ -86,7 +86,10 @@ def add_payment(request, order_id):
 def close_order(request, order_id):
     get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
     if request.method == "POST":
-        OrderService.close(order_id)
-        messages.success(request, "Orden cerrada")
-        return redirect("order_list")
+        try:
+            OrderService.close(order_id)
+            messages.success(request, "Orden cerrada")
+            return redirect("order_list")
+        except ValueError as e:
+            messages.error(request, str(e))
     return redirect("order_detail", order_id=order_id)

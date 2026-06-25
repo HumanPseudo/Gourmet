@@ -46,6 +46,19 @@ def create_order(
     return 201, OrderOut.model_validate(order)
 
 
+# ── Kitchen endpoints (before param routes) ─────────────────────────
+
+
+@router.get(
+    "/kitchen",
+    response=list[KitchenItemOut],
+    summary="List items for kitchen display",
+)
+def kitchen_items(request: HttpRequest) -> Any:
+    items = OrderService.list_kitchen()
+    return [KitchenItemOut.model_validate(i) for i in items]
+
+
 @router.get(
     "/{order_id}",
     response=OrderOut,
@@ -152,19 +165,6 @@ def close_order(
     except ValueError as e:
         return 400, {"detail": str(e)}
     return 200, OrderOut.model_validate(order)
-
-
-# ── Kitchen endpoints ──────────────────────────────────────────────
-
-
-@router.get(
-    "/kitchen",
-    response=list[KitchenItemOut],
-    summary="List items for kitchen display",
-)
-def kitchen_items(request: HttpRequest) -> Any:
-    items = OrderService.list_kitchen()
-    return [KitchenItemOut.model_validate(i) for i in items]
 
 
 @router.patch(
