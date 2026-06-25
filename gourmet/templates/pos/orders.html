@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block head_title %}Órdenes | Gourmet{% endblock %}
+{% block content %}
+<div style="padding: 20px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1 style="margin: 0;">Órdenes</h1>
+    <a href="{% url 'create_order' %}" style="background: #28a745; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold;">+ Nueva orden</a>
+  </div>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr style="background: #f8f9fa; text-align: left;">
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">ID</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Mesa</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Items</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Total</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Estado</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Creada</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+        <tr style="border-bottom: 1px solid #dee2e6;">
+          <td style="padding: 10px; font-family: monospace;">{{ order.pk|stringformat:".8s" }}</td>
+          <td style="padding: 10px;">{{ order.table.code|default:"-" }}</td>
+          <td style="padding: 10px;">{{ order.items.count }}</td>
+          <td style="padding: 10px;">${{ order.total|floatformat:2 }}</td>
+          <td style="padding: 10px;">
+            <span style="background: {% if order.status == 'open' %}#28a745{% elif order.status == 'closed' %}#6c757d{% else %}#dc3545{% endif %}; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 12px;">{{ order.status }}</span>
+          </td>
+          <td style="padding: 10px;">{{ order.created_at|date:"d/m H:i" }}</td>
+          <td style="padding: 10px;"><a href="{% url 'order_detail' order.pk %}" style="color: #007bff;">Ver</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" style="padding: 20px; text-align: center; color: #666;">No hay órdenes</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

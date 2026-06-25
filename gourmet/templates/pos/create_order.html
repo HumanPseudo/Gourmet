@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block head_title %}Crear orden | Gourmet{% endblock %}
+{% block content %}
+<div style="padding: 20px; max-width: 800px;">
+  <a href="{% url 'order_list' %}" style="color: #007bff; text-decoration: none;">&larr; Volver</a>
+  <h1 style="margin: 16px 0;">Nueva orden</h1>
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin-bottom: 16px;">
+      <label style="display: block; margin-bottom: 4px; font-weight: bold;">Mesa</label>
+      <select name="table_id" style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; width: 200px;">
+        <option value="">Sin mesa</option>
+        {% for table in tables %}
+          <option value="{{ table.pk }}">{{ table.code }} ({{ table.capacity }} pers)</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <label style="display: block; margin-bottom: 4px; font-weight: bold;">Notas</label>
+      <textarea name="notes" style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; width: 100%;" rows="2"></textarea>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <h2 style="font-size: 18px; margin-bottom: 8px;">Productos</h2>
+      {% regroup products by category as category_list %}
+      {% for group in category_list %}
+        <h3 style="font-size: 14px; color: #666; margin: 12px 0 4px;">{{ group.grouper.name }}</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
+          {% for product in group.list %}
+            <label style="display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; cursor: pointer;">
+              <input type="hidden" name="product_id" value="{{ product.pk }}">
+              <input type="number" name="quantity" value="0" min="0" max="99" style="width: 50px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: center;">
+              <span style="flex: 1;">{{ product.name }}</span>
+              <span style="color: #666; font-size: 13px;">${{ product.price|floatformat:2 }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+    <button type="submit" style="background: #28a745; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;">Crear orden</button>
+  </form>
+</div>
+{% endblock %}

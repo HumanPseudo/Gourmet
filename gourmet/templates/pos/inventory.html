@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block head_title %}Inventario | Gourmet{% endblock %}
+{% block content %}
+<div style="padding: 20px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1 style="margin: 0;">Inventario</h1>
+    <div style="display: flex; gap: 8px;">
+      <a href="{% url 'movement_list' %}" style="background: #6c757d; color: #fff; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px;">Movimientos</a>
+      <a href="{% url 'recipe_list' %}" style="background: #6c757d; color: #fff; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px;">Recetas</a>
+    </div>
+  </div>
+
+  {% if low_stock %}
+    <div style="background: #fff3cd; border: 1px solid #ffeeba; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+      <strong style="color: #856404;">⚠ Stock bajo en {{ low_stock|length }} producto(s):</strong>
+      <ul style="margin: 8px 0 0 16px;">
+        {% for item in low_stock %}
+          <li style="color: #856404;">{{ item.name }} — {{ item.stock|floatformat:2 }} {{ item.unit }} (mín: {{ item.min_stock|floatformat:2 }})</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr style="background: #f8f9fa; text-align: left;">
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Nombre</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Unidad</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Stock</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Min</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Costo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr style="border-bottom: 1px solid #dee2e6;{% if item.stock <= item.min_stock %} background: #fff3cd;{% endif %}">
+          <td style="padding: 10px;">{{ item.name }}</td>
+          <td style="padding: 10px;">{{ item.unit }}</td>
+          <td style="padding: 10px; font-weight: bold;">{{ item.stock|floatformat:2 }}</td>
+          <td style="padding: 10px;">{{ item.min_stock|floatformat:2 }}</td>
+          <td style="padding: 10px;">{% if item.cost_price %}${{ item.cost_price|floatformat:2 }}{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" style="padding: 20px; text-align: center; color: #666;">Sin items en inventario</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

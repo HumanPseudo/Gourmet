@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block head_title %}Orden #{{ order.pk|stringformat:".8s" }} | Gourmet{% endblock %}
+{% block content %}
+<div style="padding: 20px; max-width: 900px;">
+  <a href="{% url 'order_list' %}" style="color: #007bff; text-decoration: none;">&larr; Órdenes</a>
+  <div style="display: flex; justify-content: space-between; align-items: start; margin: 16px 0 24px;">
+    <div>
+      <h1 style="margin: 0;">Orden #{{ order.pk|stringformat:".8s" }}</h1>
+      <div style="display: flex; gap: 16px; margin-top: 8px;">
+        <span style="background: {% if order.status == 'open' %}#28a745{% elif order.status == 'closed' %}#6c757d{% else %}#dc3545{% endif %}; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">{{ order.status }}</span>
+        <span style="color: #666;">Mesa: <strong>{{ order.table.code|default:"-" }}</strong></span>
+        <span style="color: #666;">{{ order.created_at|date:"d/m H:i" }}</span>
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 24px; font-weight: bold;">${{ order.total|floatformat:2 }}</div>
+      <div style="color: #999; font-size: 13px;">Subtotal: ${{ order.subtotal|floatformat:2 }}</div>
+    </div>
+  </div>
+
+  {% if order.notes %}
+    <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 20px; border-left: 3px solid #6c757d;">
+      <strong>Notas:</strong> {{ order.notes }}
+    </div>
+  {% endif %}
+
+  <h2 style="margin-bottom: 12px;">Items ({{ order.items.count }})</h2>
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+    <thead>
+      <tr style="background: #f8f9fa; text-align: left;">
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Producto</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">P/U</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Cant</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in order.items.all %}
+        <tr style="border-bottom: 1px solid #dee2e6;">
+          <td style="padding: 10px;">
+            {{ item.product_name }}
+            {% if item.notes %}<br><small style="color: #666;">{{ item.notes }}</small>{% endif %}
+          </td>
+          <td style="padding: 10px;">${{ item.product_price|floatformat:2 }}</td>
+          <td style="padding: 10px;">{{ item.quantity }}</td>
+          <td style="padding: 10px;">
+            <span style="background: {% if item.status == 'pending' %}#17a2b8{% elif item.status == 'preparing' %}#ffc107{% elif item.status == 'ready' %}#28a745{% elif item.status == 'served' %}#6c757d{% else %}#dc3545{% endif %}; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 12px;">{{ item.status }}</span>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if order.status == 'open' %}
+    <h2 style="margin-bottom: 12px;">Pagar</h2>
+    <form method="post" action="{% url 'add_payment' order.pk %}" style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-bottom: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px;">
+      {% csrf_token %}
+      <div>
+        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Método</label>
+        <select name="method" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+          <option value="cash">Efectivo</option>
+          <option value="card">Tarjeta</option>
+          <option value="transfer">Transferencia</option>
+          <option value="other">Otro</option>
+        </select>
+      </div>
+      <div>
+        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Monto</label>
+        <input type="number" name="amount" step="0.01" value="{{ order.total|floatformat:2 }}" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 120px;">
+      </div>
+      <div>
+        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Referencia</label>
+        <input type="text" name="reference" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 150px;">
+      </div>
+      <button type="submit" style="background: #007bff; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Registrar pago</button>
+    </form>
+
+    <form method="post" action="{% url 'close_order' order.pk %}" style="margin-bottom: 24px;">
+      {% csrf_token %}
+      <button type="submit" style="background: #28a745; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;" onclick="return confirm('¿Cerrar la orden?')">Cerrar orden</button>
+    </form>
+  {% endif %}
+
+  <h2 style="margin-bottom: 12px;">Pagos ({{ order.payments.count }})</h2>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr style="background: #f8f9fa; text-align: left;">
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Método</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Monto</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Referencia</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for payment in order.payments.all %}
+        <tr style="border-bottom: 1px solid #dee2e6;">
+          <td style="padding: 10px; text-transform: capitalize;">{{ payment.method }}</td>
+          <td style="padding: 10px;">${{ payment.amount|floatformat:2 }}</td>
+          <td style="padding: 10px;">{{ payment.reference|default:"-" }}</td>
+          <td style="padding: 10px;">{{ payment.created_at|date:"d/m H:i" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" style="padding: 10px; color: #666;">Sin pagos registrados</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
