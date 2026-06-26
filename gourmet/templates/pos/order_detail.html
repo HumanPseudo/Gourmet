@@ -25,9 +25,11 @@
   {% endif %}
 
   <h2 style="margin-bottom: 12px;">Items ({{ order.items.count }})</h2>
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
     <thead>
       <tr style="background: #f8f9fa; text-align: left;">
+        {% if order.status == 'open' %}<th style="padding: 10px; border-bottom: 2px solid #dee2e6;width:30px;"></th>{% endif %}
         <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Producto</th>
         <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">P/U</th>
         <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Cant</th>
@@ -37,6 +39,9 @@
     <tbody>
       {% for item in order.items.all %}
         <tr style="border-bottom: 1px solid #dee2e6;">
+          {% if order.status == 'open' %}
+          <td style="padding: 10px;"><input type="checkbox" class="split-item" value="{{ item.pk }}" {% if item.status != 'pending' %}disabled{% endif %}></td>
+          {% endif %}
           <td style="padding: 10px;">
             {{ item.product_name }}
             {% if item.notes %}<br><small style="color: #666;">{{ item.notes }}</small>{% endif %}
@@ -50,6 +55,24 @@
       {% endfor %}
     </tbody>
   </table>
+  {% if order.status == 'open' %}
+  <button id="splitBtn" style="background:#6f42c1;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:13px;margin-bottom:16px;" onclick="doSplit()">✂️ Separar items seleccionados</button>
+  <script>
+  function doSplit() {
+    const ids = Array.from(document.querySelectorAll('.split-item:checked')).map(cb => cb.value);
+    if (!ids.length) { alert('Selecciona items para separar'); return; }
+    if (!confirm('¿Separar ' + ids.length + ' item(s) a una nueva orden?')) return;
+    fetch('{% url "split_order" order.pk %}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRFToken':document.querySelector('meta[name=csrf-token]').content},
+      body: JSON.stringify({item_ids: ids}),
+    }).then(r => r.json()).then(d => {
+      if (d.error) { alert(d.error); return; }
+      window.location.reload();
+    });
+  }
+  </script>
+  {% endif %}
 
   {% if order.status == 'open' %}
     <h2 style="margin-bottom: 12px;">Pagar</h2>
@@ -75,10 +98,14 @@
       <button type="submit" style="background: #007bff; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Registrar pago</button>
     </form>
 
-    <form method="post" action="{% url 'close_order' order.pk %}" style="margin-bottom: 24px;">
-      {% csrf_token %}
-      <button type="submit" style="background: #28a745; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;" onclick="return confirm('¿Cerrar la orden?')">Cerrar orden</button>
-    </form>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;">
+      <a href="{% url 'print_receipt' order.pk %}" target="_blank" style="background:#17a2b8;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">🧾 Imprimir recibo</a>
+      <a href="{% url 'print_kitchen' order.pk %}" target="_blank" style="background:#fd7e14;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">🍳 Imprimir cocina</a>
+      <form method="post" action="{% url 'close_order' order.pk %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" style="background: #28a745; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;" onclick="return confirm('¿Cerrar la orden?')">Cerrar orden</button>
+      </form>
+    </div>
   {% endif %}
 
   <h2 style="margin-bottom: 12px;">Pagos ({{ order.payments.count }})</h2>

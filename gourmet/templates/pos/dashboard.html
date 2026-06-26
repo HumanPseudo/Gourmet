@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block head_title %}Dashboard | Gourmet{% endblock %}
+{% block content %}
+<style>
+  .card { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; }
+  .num { font-size: 24px; font-weight: 700; }
+  .label { font-size: 12px; color: #666; text-transform: uppercase; }
+</style>
+
+<h2 style="margin:0 0 16px;">📊 Dashboard {{ today|date:"d/m/Y" }}</h2>
+<a href="{% url 'pos' %}" style="display:inline-block;margin-bottom:16px;color:#007bff;">← POS</a>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px;">
+  <div class="card">
+    <div class="label">Órdenes</div>
+    <div class="num">{{ order_count }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Ventas</div>
+    <div class="num" style="color:#28a745;">${{ total_sales|floatformat:2 }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Impuestos</div>
+    <div class="num" style="color:#dc3545;">${{ total_tax|floatformat:2 }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Propinas</div>
+    <div class="num" style="color:#6f42c1;">${{ total_tips|floatformat:2 }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Descuentos</div>
+    <div class="num" style="color:#fd7e14;">${{ total_discount|floatformat:2 }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Items vendidos</div>
+    <div class="num">{{ item_count }}</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <div class="card">
+    <h3>Pagos por método</h3>
+    <table style="width:100%;margin-top:8px;">
+      {% for method, amount in by_method.items %}
+      <tr>
+        <td>{{ method|title }}</td>
+        <td style="text-align:right;font-weight:700;">${{ amount|floatformat:2 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2" style="color:#999;">Sin pagos hoy</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  <div class="card">
+    <h3>Top productos</h3>
+    <table style="width:100%;margin-top:8px;">
+      {% for name, qty in top_products %}
+      <tr>
+        <td>{{ name }}</td>
+        <td style="text-align:right;font-weight:700;">{{ qty }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2" style="color:#999;">Sin ventas hoy</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% load humanize %}<html><head><meta charset="utf-8"><title>Kitchen #{{ order.pk|stringformat:"s"|slice:":8" }}</title>
+<style>
+  @page { margin: 0; size: 80mm auto; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; padding: 16px; color: #000; }
+  .hdr { text-align: center; margin-bottom: 12px; border-bottom: 1px dashed #000; padding-bottom: 8px; }
+  .hdr h1 { font-size: 18px; }
+  .item { margin: 8px 0; padding: 4px 0; border-bottom: 1px dotted #ccc; }
+  .item .qty { font-weight: 700; font-size: 16px; }
+  .item .name { font-size: 14px; }
+  .notes { color: #c00; font-style: italic; margin-top: 2px; }
+  .footer { text-align: center; margin-top: 16px; font-size: 10px; color: #888; }
+  @media print { .no-print { display: none; } }
+</style></head><body>
+  <div class="hdr">
+    <h1>🍳 COCINA</h1>
+    <p><strong>Orden #{{ order.pk|stringformat:"s"|slice:":8" }}</strong></p>
+    {% if order.table %}<p><strong>Mesa:</strong> {{ order.table.code }}</p>{% endif %}
+    <p>{{ now|date:"d/m/Y H:i" }}</p>
+  </div>
+  {% for item in order.items.all %}
+  <div class="item">
+    <span class="qty">{{ item.quantity }}x</span>
+    <span class="name">{{ item.product_name }}</span>
+    {% if item.notes %}<div class="notes">📝 {{ item.notes }}</div>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="footer">
+    <p>Gracias — Gourmet POS</p>
+  </div>
+  <div class="no-print" style="text-align:center;margin-top:12px;">
+    <button onclick="window.print()" style="padding:8px 24px;font-size:14px;">🖨 Imprimir</button>
+  </div>
+  <script>window.print()</script>
+</body></html>

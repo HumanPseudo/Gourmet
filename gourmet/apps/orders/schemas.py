@@ -9,12 +9,14 @@ class OrderItemIn(Schema):
     product_id: UUID
     quantity: int = 1
     notes: str = ""
+    discount_percent: Decimal = Decimal("0.00")
 
 
 class OrderItemUpdate(Schema):
     quantity: int | None = None
     notes: str | None = None
     status: str | None = None
+    discount_percent: Decimal | None = None
 
 
 class OrderItemOut(Schema):
@@ -23,6 +25,7 @@ class OrderItemOut(Schema):
     product_name: str
     product_price: Decimal
     tax_rate: Decimal = Decimal("0.0000")
+    discount_percent: Decimal = Decimal("0.00")
     quantity: int
     notes: str = ""
     status: str
@@ -34,12 +37,14 @@ class PaymentIn(Schema):
     method: str
     amount: Decimal
     reference: str = ""
+    tip: Decimal = Decimal("0.00")
 
 
 class PaymentOut(Schema):
     id: UUID
     method: str
     amount: Decimal
+    tip: Decimal
     reference: str
     created_at: datetime
 
@@ -55,6 +60,7 @@ class OrderOut(Schema):
     status: str
     subtotal: Decimal
     total: Decimal
+    discount_amount: Decimal
     notes: str = ""
     items: list[OrderItemOut]
     payments: list[PaymentOut]

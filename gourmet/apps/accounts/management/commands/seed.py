@@ -133,8 +133,11 @@ class Command(BaseCommand):
         tables = {t.code: t for t in Table.objects.filter(is_active=True)}
         prods = {p.name: p for p in Product.objects.filter(is_available=True)}
 
-        def make(table_code: str, notes: str, items: list, paid: bool = False) -> Order:
-            t = tables.get(table_code)
+        def make(
+            table_code: str | None, notes: str, items: list,
+            paid: bool = False,
+        ) -> Order:
+            t = tables.get(table_code or "")
             order = OrderService.create(
                 table_id=t.pk if t else None, notes=notes,
             )

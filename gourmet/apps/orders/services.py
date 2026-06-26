@@ -60,6 +60,7 @@ class OrderService:
     @transaction.atomic
     def add_item(
         order_id: UUID, product_id: UUID, quantity: int, notes: str,
+        discount_percent: Decimal | None = None,
     ) -> OrderItem:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
         product = get_object_or_404(Product, pk=product_id)
@@ -71,6 +72,7 @@ class OrderService:
             product_price=product.price,
             quantity=quantity,
             tax_rate=tax_rate,
+            discount_percent=discount_percent or Decimal("0.00"),
             notes=notes,
         )
         OrderService._deduct_inventory(product, quantity)
@@ -112,11 +114,15 @@ class OrderService:
         )
         subtotal = Decimal("0.00")
         tax_total = Decimal("0.00")
+        discount_total = Decimal("0.00")
         for item in items:
             if item.product_price is not None:
                 line_total = item.product_price * item.quantity
-                subtotal += line_total
-                tax_total += line_total * item.tax_rate
+                discount_amt = line_total * (item.discount_percent / Decimal("100"))
+                discount_total += discount_amt
+                line_after = line_total - discount_amt
+                subtotal += line_after
+                tax_total += line_after * item.tax_rate
         order.subtotal = subtotal.quantize(Decimal("0.01"))
         order.total = (subtotal + tax_total).quantize(Decimal("0.01"))
         order.save(update_fields=["subtotal", "total"])
@@ -124,12 +130,16 @@ class OrderService:
 
     @staticmethod
     @transaction.atomic
-    def pay(order_id: UUID, method: str, amount: Decimal, reference: str) -> Payment:
+    def pay(
+        order_id: UUID, method: str, amount: Decimal, reference: str,
+        tip: Decimal | None = None,
+    ) -> Payment:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
         if amount <= 0:
             raise ValueError("Payment amount must be positive")
         payment = Payment.objects.create(
-            order=order, method=method, amount=amount, reference=reference
+            order=order, method=method, amount=amount, reference=reference,
+            tip=tip or Decimal("0.00"),
         )
         return payment
 

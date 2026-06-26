@@ -25,6 +25,7 @@ from gourmet.apps.orders.views import (
     add_payment,
     close_order,
     create_order,
+    dashboard,
     kitchen,
     order_detail,
     order_list,
@@ -32,6 +33,9 @@ from gourmet.apps.orders.views import (
     pos_close,
     pos_create_order,
     pos_pay,
+    print_kitchen,
+    print_receipt,
+    split_order,
 )
 
 handler400 = "gourmet.views.bad_request"
@@ -53,6 +57,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="index",
     ),
     path("pos/", pos, name="pos"),
+    path("pos/dashboard/", dashboard, name="dashboard"),
     path("pos/create/", pos_create_order, name="pos_create_order"),
     path("pos/pay/<uuid:order_id>/", pos_pay, name="pos_pay"),
     path("pos/close/<uuid:order_id>/", pos_close, name="pos_close"),
@@ -62,6 +67,13 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("pos/orders/<uuid:order_id>/", order_detail, name="order_detail"),
     path("pos/orders/<uuid:order_id>/pay/", add_payment, name="add_payment"),
     path("pos/orders/<uuid:order_id>/close/", close_order, name="close_order"),
+    path("pos/orders/<uuid:order_id>/split/", split_order, name="split_order"),
+    path("pos/orders/<uuid:order_id>/print/", print_receipt, name="print_receipt"),
+    path(
+        "pos/orders/<uuid:order_id>/print/kitchen/",
+        print_kitchen,
+        name="print_kitchen",
+    ),
     path("pos/inventory/", inventory_list, name="inventory_list"),
     path("pos/inventory/movements/", movement_list, name="movement_list"),
     path("pos/inventory/recipes/", recipe_list, name="recipe_list"),

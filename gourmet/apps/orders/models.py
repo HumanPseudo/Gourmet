@@ -39,6 +39,9 @@ class Order(models.Model):
     total: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
+    discount_amount: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
+    )
     notes: models.TextField[str, str] = models.TextField(
         blank=True, default=""
     )
@@ -82,6 +85,9 @@ class OrderItem(models.Model):
     tax_rate: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=5, decimal_places=4, default=Decimal("0.0000")
     )
+    discount_percent: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00")
+    )
     quantity: models.PositiveSmallIntegerField[int, int] = (
         models.PositiveSmallIntegerField(default=1)
     )
@@ -120,6 +126,9 @@ class Payment(models.Model):
     amount: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=12, decimal_places=2
     )
+    tip: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
     method: models.CharField[str, str] = models.CharField(
         max_length=16, choices=Method.choices
     )
@@ -133,3 +142,36 @@ class Payment(models.Model):
 
     def __str__(self) -> str:
         return f"{self.method} {self.amount}"
+
+
+class Invoice(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENT = "sent", "Sent"
+        ACCEPTED = "accepted", "Accepted"
+        REJECTED = "rejected", "Rejected"
+
+    id: models.UUIDField[uuid.UUID, uuid.UUID] = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False
+    )
+    order: models.ForeignKey[Order, Order] = models.ForeignKey(
+        Order, on_delete=models.CASCADE, related_name="invoices"
+    )
+    cufe: models.CharField[str, str] = models.CharField(
+        max_length=96, unique=True, blank=True, default=""
+    )
+    xml: models.TextField[str, str] = models.TextField(blank=True, default="")
+    status: models.CharField[str, str] = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.PENDING,
+    )
+    dian_response: models.TextField[str, str] = models.TextField(
+        blank=True, default=""
+    )
+    created_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now_add=True)
+    updated_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Invoice {self.pk} ({self.status})"

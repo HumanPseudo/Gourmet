@@ -4,7 +4,10 @@
 <div style="padding: 20px;">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h1 style="margin: 0;">Órdenes</h1>
-    <a href="{% url 'create_order' %}" style="background: #28a745; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold;">+ Nueva orden</a>
+    <div style="display:flex;gap:8px;">
+      <a href="{% url 'dashboard' %}" style="background:#17a2b8;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">📊 Dashboard</a>
+      <a href="{% url 'create_order' %}" style="background: #28a745; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold;">+ Nueva orden</a>
+    </div>
   </div>
   <table style="width: 100%; border-collapse: collapse;">
     <thead>

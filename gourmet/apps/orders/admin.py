@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Order, OrderItem, Payment
+from .models import Invoice, Order, OrderItem, Payment
 
 
 @admin.register(Order)
@@ -22,7 +22,15 @@ class OrderItemAdmin(admin.ModelAdmin[OrderItem]):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin[Payment]):
-    list_display = ("order", "method", "amount", "created_at")
+    list_display = ("order", "method", "amount", "tip", "created_at")
     list_filter = ("method",)
     date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+
+
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin[Invoice]):
+    list_display = ("id", "order", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("cufe",)
     ordering = ("-created_at",)
