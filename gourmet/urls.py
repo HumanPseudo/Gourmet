@@ -28,6 +28,10 @@ from gourmet.apps.orders.views import (
     kitchen,
     order_detail,
     order_list,
+    pos,
+    pos_close,
+    pos_create_order,
+    pos_pay,
 )
 
 handler400 = "gourmet.views.bad_request"
@@ -48,6 +52,10 @@ urlpatterns: list[URLPattern | URLResolver] = [
         ),
         name="index",
     ),
+    path("pos/", pos, name="pos"),
+    path("pos/create/", pos_create_order, name="pos_create_order"),
+    path("pos/pay/<uuid:order_id>/", pos_pay, name="pos_pay"),
+    path("pos/close/<uuid:order_id>/", pos_close, name="pos_close"),
     path("pos/kitchen/", kitchen, name="kitchen"),
     path("pos/orders/", order_list, name="order_list"),
     path("pos/orders/create/", create_order, name="create_order"),
