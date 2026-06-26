@@ -79,6 +79,9 @@ class OrderItem(models.Model):
     product_price: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=10, decimal_places=2
     )
+    tax_rate: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=5, decimal_places=4, default=Decimal("0.0000")
+    )
     quantity: models.PositiveSmallIntegerField[int, int] = (
         models.PositiveSmallIntegerField(default=1)
     )

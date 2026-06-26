@@ -60,9 +60,9 @@ class Command(BaseCommand):
             self.stdout.write(f"  Created category: {cat.name}")
 
         products_data = [
-            (cat, "Coca Cola", 2.50),
-            (cat, "Agua Mineral", 1.50),
-            (cat, "Jugo Natural", 3.00),
+            (cat, "Coca Cola", 2.50, "IVA_19"),
+            (cat, "Agua Mineral", 1.50, "IVA_19"),
+            (cat, "Jugo Natural", 3.00, "EXENTO"),
         ]
         cat2, _ = Category.objects.get_or_create(
             name="Comidas", defaults={"sort_order": 2}
@@ -71,24 +71,25 @@ class Command(BaseCommand):
             self.stdout.write(f"  Created category: {cat2.name}")
 
         products_data += [
-            (cat2, "Hamburguesa", 8.50),
-            (cat2, "Pizza", 10.00),
-            (cat2, "Ensalada", 6.50),
-            (cat2, "Papas Fritas", 4.00),
+            (cat2, "Hamburguesa", 8.50, "INC_8"),
+            (cat2, "Pizza", 10.00, "INC_8"),
+            (cat2, "Ensalada", 6.50, "EXENTO"),
+            (cat2, "Papas Fritas", 4.00, "INC_8"),
         ]
 
-        for category, name, price in products_data:
+        for category, name, price, tax_type in products_data:
             _, created = Product.objects.get_or_create(
                 name=name,
                 defaults={
                     "category": category,
                     "price": Decimal(str(price)),
+                    "tax_type": tax_type,
                     "is_available": True,
                 },
             )
             self.stdout.write(
                 f"  {'Created' if created else 'Exists'}"
-                f" product: {name} (${price})"
+                f" product: {name} (${price}, {tax_type})"
             )
 
         self.stdout.write(self.style.SUCCESS("Seed complete"))

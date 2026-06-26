@@ -29,6 +29,7 @@ class ProductOut(Schema):
     name: str
     description: str | None = None
     price: Decimal
+    tax_type: str = "INC_8"
     is_available: bool
     sort_order: int
     model_config = {"from_attributes": True}
@@ -39,5 +40,6 @@ class ProductIn(Schema):
     name: str
     description: str | None = None
     price: Decimal
+    tax_type: str = "INC_8"
     is_available: bool = True
     sort_order: int = 0

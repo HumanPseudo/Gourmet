@@ -36,6 +36,12 @@ class Category(models.Model):
 
 
 class Product(models.Model):
+    class TaxChoices(models.TextChoices):
+        INC_8 = "INC_8", "Impuesto al Consumo 8%"
+        IVA_19 = "IVA_19", "IVA 19%"
+        IVA_5 = "IVA_5", "IVA 5%"
+        EXENTO = "EXENTO", "Exento 0%"
+
     id: models.UUIDField[uuid.UUID, uuid.UUID] = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False
     )
@@ -54,6 +60,10 @@ class Product(models.Model):
     )
     price: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=10, decimal_places=2, verbose_name="Price"
+    )
+    tax_type: models.CharField[str, str] = models.CharField(
+        max_length=8, choices=TaxChoices.choices,
+        default=TaxChoices.INC_8, verbose_name="Tax Type",
     )
     is_available: models.BooleanField[bool, bool] = models.BooleanField(
         default=True, verbose_name="Available"

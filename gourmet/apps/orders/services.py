@@ -17,6 +17,14 @@ from .models import Order, OrderItem, Payment
 logger = logging.getLogger(__name__)
 
 
+TAX_RATES: dict[str, Decimal] = {
+    "INC_8": Decimal("0.08"),
+    "IVA_19": Decimal("0.19"),
+    "IVA_5": Decimal("0.05"),
+    "EXENTO": Decimal("0.00"),
+}
+
+
 class OrderService:
     @staticmethod
     def _order_queryset() -> QuerySet[Order]:
@@ -55,12 +63,14 @@ class OrderService:
     ) -> OrderItem:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
         product = get_object_or_404(Product, pk=product_id)
+        tax_rate = TAX_RATES.get(product.tax_type, Decimal("0.00"))
         item = OrderItem.objects.create(
             order=order,
             product=product,
             product_name=product.name,
             product_price=product.price,
             quantity=quantity,
+            tax_rate=tax_rate,
             notes=notes,
         )
         OrderService._deduct_inventory(product, quantity)
@@ -100,13 +110,15 @@ class OrderService:
         items = OrderItem.objects.filter(order=order).exclude(
             status=OrderItem.Status.CANCELLED
         )
-        subtotal = sum(
-            item.product_price * item.quantity
-            for item in items
-            if item.product_price is not None
-        )
-        order.subtotal = Decimal(str(subtotal)).quantize(Decimal("0.01"))
-        order.total = order.subtotal
+        subtotal = Decimal("0.00")
+        tax_total = Decimal("0.00")
+        for item in items:
+            if item.product_price is not None:
+                line_total = item.product_price * item.quantity
+                subtotal += line_total
+                tax_total += line_total * item.tax_rate
+        order.subtotal = subtotal.quantize(Decimal("0.01"))
+        order.total = (subtotal + tax_total).quantize(Decimal("0.01"))
         order.save(update_fields=["subtotal", "total"])
         return OrderService.get(order.pk)
 

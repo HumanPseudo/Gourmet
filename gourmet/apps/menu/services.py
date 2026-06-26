@@ -70,6 +70,7 @@ class ProductService:
             name=data.name,
             description=data.description,
             price=data.price,
+            tax_type=data.tax_type,
             is_available=data.is_available,
             sort_order=data.sort_order,
         )
@@ -88,6 +89,7 @@ class ProductService:
         product.name = data.name
         product.description = data.description
         product.price = data.price
+        product.tax_type = data.tax_type
         product.is_available = data.is_available
         product.sort_order = data.sort_order
         product.save()

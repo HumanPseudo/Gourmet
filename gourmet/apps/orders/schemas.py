@@ -22,6 +22,7 @@ class OrderItemOut(Schema):
     product_id: UUID | None
     product_name: str
     product_price: Decimal
+    tax_rate: Decimal = Decimal("0.0000")
     quantity: int
     notes: str = ""
     status: str

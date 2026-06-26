@@ -32,10 +32,20 @@
 ## App structure
 
 - `gourmet/apps/accounts/` — auth, roles, users.
-- `gourmet/apps/menu/` — categories, products.
+- `gourmet/apps/menu/` — categories, products. Product includes `tax_type` field (INC_8, IVA_19, IVA_5, EXENTO).
 - `gourmet/apps/tables/` — restaurant tables.
+- `gourmet/apps/orders/` — orders, items, payments. OrderItem snapshots `tax_rate` from product. `checkout()` computes `total = subtotal + tax`.
+- `gourmet/apps/inventory/` — stock, recipes, movements. `_deduct_inventory` runs during `add_item`.
 - `gourmet/apps/jukebox/` — queue + remote player integration.
 - Shared: `gourmet/apps/exceptions.py` (exception handlers), `gourmet/apps/schemas.py` (MessageOut), `gourmet/apps/middleware.py` (RequestID).
+
+## Colombian tax rules
+
+- Restaurants with table service → **INC 8%** (Impuesto al Consumo). Franchises → **IVA 19%**.
+- Fast food / autoservice / takeout without table service → **IVA 19%**. Catering → **IVA 19%**.
+- Small restaurants (ingresos < 3.500 UVT ~ $183M COP/year, 1 local) → no INC, no IVA.
+- UVT 2026: $52,374 COP.
+- DEE POS (Documento Equivalente Electrónico) replaces paper tickets — XML + CUFE/QR, transmitted to DIAN in real time (not yet implemented in code).
 
 ## Testing quirks
 
