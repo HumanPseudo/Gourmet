@@ -123,9 +123,10 @@ class OrderService:
                 line_after = line_total - discount_amt
                 subtotal += line_after
                 tax_total += line_after * item.tax_rate
+        order.discount_amount = discount_total.quantize(Decimal("0.01"))
         order.subtotal = subtotal.quantize(Decimal("0.01"))
         order.total = (subtotal + tax_total).quantize(Decimal("0.01"))
-        order.save(update_fields=["subtotal", "total"])
+        order.save(update_fields=["discount_amount", "subtotal", "total"])
         return OrderService.get(order.pk)
 
     @staticmethod

@@ -80,6 +80,34 @@ def pos_pay(request, order_id):
 
 @staff_member_required
 @require_POST
+def pos_add_items(request, order_id):
+    data = json.loads(request.body)
+    order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
+    for item in data.get("items", []):
+        OrderService.add_item(
+            order.pk,
+            item["product_id"],
+            item.get("quantity", 1),
+            item.get("notes", ""),
+            Decimal(str(item.get("discount_percent", 0))),
+        )
+    order = OrderService.checkout(order.pk)
+    total_paid = sum(p.amount for p in order.payments.all())
+    tax_total = sum(
+        (i.product_price * i.quantity * i.tax_rate)
+        for i in order.items.exclude(status=OrderItem.Status.CANCELLED)
+    )
+    return JsonResponse({
+        "id": str(order.pk),
+        "subtotal": str(order.subtotal),
+        "total": str(order.total),
+        "tax_total": str(tax_total.quantize(Decimal("0.01"))),
+        "total_paid": str(total_paid),
+    })
+
+
+@staff_member_required
+@require_POST
 def pos_close(request, order_id):
     try:
         OrderService.close(order_id)
