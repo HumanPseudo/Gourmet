@@ -5,7 +5,7 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.pagination import paginate
 
-from gourmet.apps.accounts.auth import TokenAuth
+from gourmet.apps.accounts.auth import RoleTokenAuth, TokenAuth
 from gourmet.apps.schemas import MessageOut
 
 from .schemas import (
@@ -17,6 +17,7 @@ from .schemas import (
     OrderOut,
     PaymentIn,
     PaymentOut,
+    PriorityIn,
 )
 from .services import OrderService
 
@@ -56,7 +57,12 @@ def create_order(
 )
 def kitchen_items(request: HttpRequest) -> Any:
     items = OrderService.list_kitchen()
-    return [KitchenItemOut.model_validate(i) for i in items]
+    result = []
+    for i in items:
+        out = KitchenItemOut.model_validate(i)
+        out.table_code = i.order.table.code if i.order.table else ""
+        result.append(out)
+    return result
 
 
 @router.get(
@@ -150,6 +156,19 @@ def pay(
 )
 def cancel_order(request: HttpRequest, order_id: UUID) -> OrderOut:
     return OrderOut.model_validate(OrderService.cancel(order_id))
+
+
+@router.patch(
+    "/items/{item_id}/priority",
+    response={200: OrderItemOut, 400: MessageOut},
+    auth=RoleTokenAuth("admin"),
+    summary="Set item priority (kitchen reorder)",
+)
+def set_item_priority(
+    request: HttpRequest, item_id: UUID, payload: PriorityIn
+) -> tuple[int, Any]:
+    item = OrderService.set_item_priority(item_id, payload.priority)
+    return 200, OrderItemOut.model_validate(item)
 
 
 @router.post(
