@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block head_title %}Órdenes | Gourmet{% endblock %}
 {% block content %}
+<div id="orders-page" hx-get="{% url 'order_list' %}" hx-trigger="every 30s" hx-target="body" hx-swap="innerHTML">
 <style>
 .order-card { border:1px solid #dee2e6; border-radius:12px; padding:16px; margin-bottom:12px; background:#fff; display:flex; align-items:center; gap:16px; transition:box-shadow .15s; }
 .order-card:hover { box-shadow:0 2px 12px rgba(0,0,0,.08); }
@@ -80,4 +81,5 @@
   <div style="padding:40px;text-align:center;color:#999;">No hay órdenes</div>
   {% endif %}
 </div>
+<div style="font-size:11px;color:#ccc;text-align:center;padding:4px;">auto-actualizando cada 30s</div>
 {% endblock %}

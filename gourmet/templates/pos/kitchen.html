@@ -30,9 +30,9 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
   </div>
 
   <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
-    <span style="background: #17a2b8; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Pendientes: {{ items|length }}</span>
-    <span style="background: #ffc107; color: #333; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Preparando: {{ items|length }}</span>
-    <span style="background: #28a745; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Listos: 0</span>
+    <span style="background: #17a2b8; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Pendientes: {{ pending_count }}</span>
+    <span style="background: #ffc107; color: #333; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Preparando: {{ preparing_count }}</span>
+    <span style="background: #28a745; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Listos: {{ ready_count }}</span>
   </div>
 
   <div id="kitchen-grid" hx-get="{% url 'kitchen' %}" hx-trigger="every 15s" hx-target="body" hx-swap="innerHTML" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">

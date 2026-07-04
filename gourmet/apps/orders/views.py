@@ -142,6 +142,7 @@ def pos_close(request, order_id):
 def kitchen(request):
     items = OrderService.list_kitchen()
     now = datetime.now(UTC)
+    pending = preparing = ready = 0
     for i in items:
         i.elapsed = (
             int((now - i.created_at).total_seconds() / 60) if i.created_at else 0
@@ -150,10 +151,19 @@ def kitchen(request):
             int((now - i.started_at).total_seconds() / 60) if i.started_at else None
         )
         i.table_code = i.order.table.code if i.order.table else ""
+        if i.status == "pending":
+            pending += 1
+        elif i.status == "preparing":
+            preparing += 1
+        elif i.status == "ready":
+            ready += 1
     return render(request, "pos/kitchen.html", {
         "items": items,
         "is_admin": request.user.is_superuser
         or (request.user.role and request.user.role.name == "admin"),
+        "pending_count": pending,
+        "preparing_count": preparing,
+        "ready_count": ready,
     })
 
 
