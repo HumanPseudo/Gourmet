@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block head_title %}Orden #{{ order.pk|stringformat:".8s" }} | Gourmet{% endblock %}
 {% block content %}
 <div style="padding: 20px; max-width: 900px;">
@@ -56,22 +57,7 @@
     </tbody>
   </table>
   {% if order.status == 'open' %}
-  <button id="splitBtn" style="background:#6f42c1;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:13px;margin-bottom:16px;" onclick="doSplit()">✂️ Separar items seleccionados</button>
-  <script>
-  function doSplit() {
-    const ids = Array.from(document.querySelectorAll('.split-item:checked')).map(cb => cb.value);
-    if (!ids.length) { alert('Selecciona items para separar'); return; }
-    if (!confirm('¿Separar ' + ids.length + ' item(s) a una nueva orden?')) return;
-    fetch('{% url "split_order" order.pk %}', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','X-CSRFToken':document.querySelector('meta[name=csrf-token]').content},
-      body: JSON.stringify({item_ids: ids}),
-    }).then(r => r.json()).then(d => {
-      if (d.error) { alert(d.error); return; }
-      window.location.reload();
-    });
-  }
-  </script>
+  <button id="splitBtn" data-url="{% url 'split_order' order.pk %}" style="background:#6f42c1;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:13px;margin-bottom:16px;">✂️ Separar items seleccionados</button>
   {% endif %}
 
   {% if order.status == 'open' %}
@@ -101,9 +87,9 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;">
       <a href="{% url 'print_receipt' order.pk %}" target="_blank" style="background:#17a2b8;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">🧾 Imprimir recibo</a>
       <a href="{% url 'print_kitchen' order.pk %}" target="_blank" style="background:#fd7e14;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">🍳 Imprimir cocina</a>
-      <form method="post" action="{% url 'close_order' order.pk %}" style="display:inline;">
+      <form id="closeForm" method="post" action="{% url 'close_order' order.pk %}" style="display:inline;">
         {% csrf_token %}
-        <button type="submit" style="background: #28a745; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;" onclick="return confirm('¿Cerrar la orden?')">Cerrar orden</button>
+        <button type="submit" style="background: #28a745; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;">Cerrar orden</button>
       </form>
     </div>
   {% endif %}
@@ -132,4 +118,5 @@
     </tbody>
   </table>
 </div>
+<script src="{% static 'order-detail.js' %}"></script>
 {% endblock %}
