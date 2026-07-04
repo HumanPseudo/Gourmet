@@ -208,7 +208,7 @@ SECURE_BROWSER_XSS_FILTER = True  # Deprecated in Django 6.0 but explicit
 # https://docs.djangoproject.com/en/6.0/ref/settings/#secure-csp
 SECURE_CSP: dict[str, list[str]] = {
     "default-src": [CSP.SELF],
-    "script-src": [CSP.SELF],
+    "script-src": [CSP.SELF, "'unsafe-eval'"],
     "style-src": [CSP.SELF, "'unsafe-inline'"],
     "img-src": [CSP.SELF, "data:"],
 }
