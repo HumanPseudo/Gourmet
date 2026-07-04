@@ -171,7 +171,7 @@
             <div style="font-size:13px;color:#666;margin-bottom:8px;">
               Pagado: $<span x-text="totalPaid.toFixed(2)"></span> / por pagar: $<span x-text="remaining.toFixed(2)"></span>
             </div>
-            <button @click="closeOrder()" :disabled="remaining>0.005" style="width:100%;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;background:#17a2b8;" x-text="remaining>0.005?'Pendiente de pago':'✅ Cerrar orden'"></button>
+            <button @click="closeOrder()" :disabled="remaining>0.005" style="width:100%;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;background:#17a2b8;" x-text="remaining>0.005?'Sistema de pago no funciona':'✅ Cerrar orden'"></button>
             <div x-text="closeError" style="color:#dc3545;font-size:12px;margin-top:4px;"></div>
           </div>
         </template>
