@@ -20,3 +20,5 @@ node_modules/
 .codex/
 .data/
 plan.md
+test-results/
+playwright-report/
