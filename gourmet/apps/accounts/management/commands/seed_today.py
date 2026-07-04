@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 from __future__ import annotations
 
 from datetime import timedelta
@@ -113,10 +114,12 @@ class Command(BaseCommand):
         DailyClose.objects.create(
             closed_by=User.objects.filter(is_superuser=True).first(),
             total_sales=sum(
-                o.total for o in Order.objects.filter(status=Order.Status.CLOSED)
+                (o.total for o in Order.objects.filter(status=Order.Status.CLOSED)),
+                Decimal("0"),
             ),
             total_cash=sum(
-                p.amount for p in Payment.objects.filter(method="cash")
+                (p.amount for p in Payment.objects.filter(method="cash")),
+                Decimal("0"),
             ),
             cash_opening=Decimal("50000.00"),
             cash_counted=Decimal("150000.00"),

@@ -25,11 +25,17 @@ def _mins(delta: timedelta) -> int:
 
 @role_required("waiter", "admin")
 def pos(request):
+    from gourmet.apps.inventory.models import ProductRecipe
     tables = Table.objects.filter(is_active=True).order_by("code")
     tax_choices = Product.TaxChoices.choices
+    out_of_stock = set()
+    for r in ProductRecipe.objects.select_related("item").iterator():
+        if r.item.stock < r.quantity:
+            out_of_stock.add(str(r.product_id))
     return render(
         request, "pos/pos.html",
-        {"tables": tables, "tax_choices": tax_choices},
+        {"tables": tables, "tax_choices": tax_choices,
+         "out_of_stock_json": list(out_of_stock)},
     )
 
 

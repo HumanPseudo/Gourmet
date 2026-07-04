@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="out-of-stock" content="{{ out_of_stock_json|safe }}">
   <title>POS | Gourmet</title>
   <link rel="stylesheet" href="{% static 'bundles/main.css' %}">
   <style>
@@ -21,6 +22,7 @@
     .cart-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eee; }
     .pay-btn { flex: 1; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; color: #fff; cursor: pointer; text-align: center; }
     .pay-btn.selected { outline: 4px solid #ffc107; outline-offset: 2px; }
+    .pos-btn.oos { opacity: .45; border-color: #dc3545; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -34,9 +36,9 @@
     <label style="font-weight:600;font-size:14px;">Mesa:</label>
     <select x-model="tableId" style="padding:6px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px;">
       <option value="">Seleccionar mesa</option>
-      {% for table in tables %}
-        <option value="{{ table.pk }}">{{ table.code }}</option>
-      {% endfor %}
+      <template x-for="t in tables" :key="t.id">
+        <option :value="t.id" x-text="t.code + ' ' + (t.status==='occupied'?'🔴':'🟢')" :style="t.status==='occupied'?'color:#dc3545':'color:#28a745'"></option>
+      </template>
     </select>
     <template x-if="orderId">
       <span style="background:#28a745;color:#fff;padding:4px 10px;border-radius:12px;font-size:12px;">
@@ -62,9 +64,10 @@
         <div x-text="loadError" style="color:#dc3545;font-size:13px;padding:20px;text-align:center;" x-show="loadError"></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;">
           <template x-for="p in filteredProducts" :key="p.id">
-            <button class="pos-btn" @click="addItem(p)">
+            <button class="pos-btn" :class="outOfStock.includes(p.id)?'oos':''" @click="addItem(p)" :disabled="outOfStock.includes(p.id)">
               <div class="name" x-text="p.name"></div>
               <div class="price" x-text="'$' + parseFloat(p.price).toFixed(2)"></div>
+              <div x-show="outOfStock.includes(p.id)" style="font-size:10px;color:#dc3545;font-weight:600;margin-top:2px;">Sin stock</div>
             </button>
           </template>
         </div>

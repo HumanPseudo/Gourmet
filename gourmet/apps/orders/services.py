@@ -110,6 +110,8 @@ class OrderService:
     @transaction.atomic
     def remove_item(order_id: UUID, item_id: UUID) -> None:
         item = get_object_or_404(OrderItem, pk=item_id, order_id=order_id)
+        if item.product_id:
+            OrderService._reverse_inventory(item.product_id, item.quantity)
         if item.status not in (OrderItem.Status.PENDING,):
             item.status = OrderItem.Status.CANCELLED
             item.save()
@@ -192,9 +194,15 @@ class OrderService:
         order.status = Order.Status.CANCELLED
         order.closed_at = timezone.now()
         order.save(update_fields=["status", "closed_at"])
-        OrderItem.objects.filter(order=order, status=OrderItem.Status.PENDING).update(
-            status=OrderItem.Status.CANCELLED
+        items = OrderItem.objects.filter(
+            order=order, status=OrderItem.Status.PENDING,
         )
+        for item in items:
+            if item.product_id:
+                OrderService._reverse_inventory(item.product_id, item.quantity)
+        items.update(status=OrderItem.Status.CANCELLED)
+        if order.table_id:
+            Table.objects.filter(pk=order.table_id).update(status=Table.Status.AVAILABLE)
         return OrderService.get(order.pk)
 
     @staticmethod
@@ -263,3 +271,20 @@ class OrderService:
                     "Insufficient stock for %s: have %s, need %s",
                     item.name, item.stock, needed,
                 )
+
+    @staticmethod
+    def _reverse_inventory(product_id: UUID, quantity: int) -> None:
+        recipes = ProductRecipe.objects.filter(
+            product_id=product_id,
+        ).select_related("item")
+        for recipe in recipes:
+            qty = recipe.quantity * quantity
+            item = recipe.item
+            item.stock += qty
+            item.save(update_fields=["stock"])
+            InventoryMovement.objects.create(
+                item=item,
+                type=InventoryMovement.Type.IN,
+                quantity=qty,
+                reference="order:reverse",
+            )

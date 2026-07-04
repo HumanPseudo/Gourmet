@@ -1,7 +1,7 @@
 document.addEventListener('alpine:init', () => {
   Alpine.data('posApp', () => ({
-    categories: [], products: [], activeCat: '', search: '',
-    cart: [], tableId: '', orderId: null, customerName: '', orderDiscount: 0,
+    categories: [], products: [], tables: [], activeCat: '', search: '',
+    cart: [], tableId: '', orderId: null, customerName: '', orderDiscount: 0, outOfStock: [],
     payMethod: 'cash', payAmount: 0, payError: '',
     totalPaid: 0, orderSubtotal: 0, orderTotal: 0,
     createOrderError: '', closeError: '', closed: false, tipAmount: 0, showPay: false,
@@ -18,15 +18,23 @@ document.addEventListener('alpine:init', () => {
 
     async init() {
       try {
-        const [cats, prods] = await Promise.all([
+        const meta = document.querySelector('meta[name=out-of-stock]');
+        if (meta) this.outOfStock = JSON.parse(meta.content);
+        const [cats, prods, tabs] = await Promise.all([
           fetch('/api/menu/categories').then(r => { if (!r.ok) throw new Error('categories: ' + r.status); return r.json(); }),
           fetch('/api/menu/products').then(r => { if (!r.ok) throw new Error('products: ' + r.status); return r.json(); }),
+          fetch('/api/tables').then(r => { if (!r.ok) throw new Error('tables: ' + r.status); return r.json(); }),
         ]);
         this.categories = cats.items || cats || [];
         this.products = (prods.items || prods || []).filter(p => p.is_available);
+        this.tables = tabs.items || tabs || [];
       } catch (e) {
         this.loadError = 'Error al cargar datos: ' + e.message;
       }
+    },
+
+    get stockClass() {
+      return (id) => this.outOfStock.includes(id) ? 'out-of-stock' : '';
     },
 
     get filteredProducts() {
