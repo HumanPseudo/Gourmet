@@ -3,29 +3,35 @@
 {% block head_title %}Dashboard | {{ project_name }}{% endblock %}
 
 {% block content %}
-<div class="dashboard" style="padding: 20px;">
-    <h1>Bienvenido a {{ project_name }}</h1>
+<div style="padding: 20px; max-width: 800px; margin: 0 auto;">
+    <h1 style="margin-bottom: 8px;">Bienvenido a {{ project_name }}</h1>
     
     {% if user.is_authenticated %}
-        <div style="background: #e9ecef; padding: 20px; border-radius: 8px;">
-            <h3>Panel de Usuario</h3>
+        <div style="background: #e9ecef; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
             <p><strong>Email:</strong> {{ user.email }}</p>
             <p><strong>Nombre:</strong> {{ user.name|default:"No especificado" }}</p>
-            <p><strong>Teléfono:</strong> {{ user.number|default:"No especificado" }}</p>
             <p><strong>Rol:</strong> {{ user.role.name|default:"Sin rol asignado" }}</p>
         </div>
-        {% if user.is_staff %}
-            <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
-                <a href="{% url 'pos' %}" style="background: #007bff; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">🖥 POS</a>
-                <a href="{% url 'kitchen' %}" style="background: #17a2b8; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">🍳 Cocina</a>
-                <a href="{% url 'order_list' %}" style="background: #28a745; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">📋 Órdenes</a>
-                <a href="{% url 'inventory_list' %}" style="background: #ffc107; color: #333; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">📦 Inventario</a>
-                <a href="{% url 'admin:index' %}" style="background: #6c757d; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">⚙ Admin</a>
-            </div>
-        {% endif %}
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            {% if user.is_staff %}
+                <a href="{% url 'pos' %}" style="background: #007bff; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;">🖥 POS</a>
+                <a href="{% url 'kitchen' %}" style="background: #17a2b8; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;">🍳 Cocina</a>
+                <a href="{% url 'order_list' %}" style="background: #28a745; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;">📋 Órdenes</a>
+                {% if user.is_superuser or user.role.name == 'admin' %}
+                    <a href="{% url 'dashboard' %}" style="background: #ffc107; color: #333; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;">📊 Dashboard</a>
+                    <a href="{% url 'inventory_list' %}" style="background: #6c757d; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;">📦 Inventario</a>
+                {% endif %}
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:index' %}" style="background: #343a40; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;">⚙ Admin Django</a>
+                {% endif %}
+            {% endif %}
+        </div>
     {% else %}
         <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border: 1px solid #ffeeba;">
-            <p>Por favor, <a href="{% url 'login' %}">inicia sesión</a> para acceder a las funciones del sistema.</p>
+            <p style="margin-bottom: 12px;">Explora nuestro menú o inicia sesión para acceder al sistema.</p>
+            <a href="{% url 'menu_public' %}" style="background: #28a745; color: #fff; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">📋 Ver Menú</a>
+            <a href="{% url 'login' %}" style="background: #007bff; color: #fff; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block; margin-left: 8px;">Iniciar Sesión</a>
         </div>
     {% endif %}
 </div>

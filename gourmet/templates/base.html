@@ -10,20 +10,34 @@
     />
   </head>
   <body>
-    <nav style="padding: 10px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; margin-bottom: 20px;">
-        <a href="{% url 'index' %}" style="margin-right: 20px; font-weight: bold; text-decoration: none; color: #333;">Gourmet</a>
-        <div style="float: right;">
-            {% if user.is_authenticated %}
-                <span>Hola, {{ user.name|default:user.email }}</span> |
+    <nav style="padding: 10px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <a href="{% url 'index' %}" style="font-weight: bold; text-decoration: none; color: #333; font-size: 16px;">Gourmet</a>
+        {% if user.is_authenticated %}
+            {% if user.is_superuser %}
+                <a href="{% url 'admin:index' %}" style="color:#6c757d;text-decoration:none;font-size:13px;">⚙ Admin Django</a>
+            {% endif %}
+            {% if user.is_staff %}
+                <a href="{% url 'pos' %}" style="color:#007bff;text-decoration:none;font-size:13px;">🖥 POS</a>
+                <a href="{% url 'kitchen' %}" style="color:#17a2b8;text-decoration:none;font-size:13px;">🍳 Cocina</a>
+                <a href="{% url 'order_list' %}" style="color:#28a745;text-decoration:none;font-size:13px;">📋 Órdenes</a>
+                {% if user.is_superuser or user.role.name == 'admin' %}
+                    <a href="{% url 'dashboard' %}" style="color:#ffc107;text-decoration:none;font-size:13px;">📊 Dashboard</a>
+                    <a href="{% url 'inventory_list' %}" style="color:#6c757d;text-decoration:none;font-size:13px;">📦 Inventario</a>
+                {% endif %}
+            {% endif %}
+            <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size:13px;color:#666;">{{ user.name|default:user.email }}</span>
                 <form action="{% url 'logout' %}" method="post" style="display: inline;">
                     {% csrf_token %}
-                    <button type="submit" style="background: none; border: none; color: #007bff; cursor: pointer; text-decoration: underline; padding: 0;">Cerrar Sesión</button>
+                    <button type="submit" style="background: none; border: none; color: #007bff; cursor: pointer; text-decoration: underline; padding: 0; font-size:13px;">Cerrar Sesión</button>
                 </form>
-            {% else %}
-                <a href="{% url 'login' %}">Iniciar Sesión</a>
-            {% endif %}
-        </div>
-        <div style="clear: both;"></div>
+            </div>
+        {% else %}
+            <div style="margin-left: auto;">
+                <a href="{% url 'menu_public' %}" style="color:#28a745;text-decoration:none;font-size:13px;">📋 Menú</a>
+                <a href="{% url 'login' %}" style="color:#007bff;text-decoration:none;font-size:13px;margin-left:8px;">Iniciar Sesión</a>
+            </div>
+        {% endif %}
     </nav>
     <div id="container">
         {% if messages %}

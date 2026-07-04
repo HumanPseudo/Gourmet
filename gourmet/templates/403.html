@@ -1,5 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Forbidden</title></head>
-<body><h1>403 Forbidden</h1></body>
-</html>
+{% extends "base.html" %}
+{% block head_title %}Acceso denegado{% endblock %}
+{% block content %}
+<div style="padding: 40px; text-align: center;">
+  <h1>403 — Acceso denegado</h1>
+  <p style="color: #666;">No tienes permisos para acceder a esta página.</p>
+  <a href="{% url 'index' %}" style="color: #007bff;">Volver al inicio</a>
+</div>
+{% endblock %}
