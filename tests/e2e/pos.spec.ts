@@ -19,10 +19,14 @@ test.describe('POS flow', () => {
     await page.fill('input[placeholder="$ desc"]', '0');
 
     await page.click('button:has-text("Crear orden")');
-    await page.waitForSelector('text=Cobrar todo', { timeout: 10000 });
+    await page.waitForSelector('text=Cobrar', { timeout: 10000 });
+
+    await page.click('button:has-text("Cobrar")');
+    await page.waitForSelector('text=Cobrar todo', { timeout: 5000 });
 
     await expect(page.locator('text=Total').last()).toBeVisible();
     await expect(page.locator('text=Cobrar todo')).toBeVisible();
+    await expect(page.getByText('Pagar', { exact: true })).toBeVisible();
 
     await page.click('button:has-text("Cobrar todo")');
     await page.waitForTimeout(500);
@@ -51,8 +55,9 @@ test.describe('POS flow', () => {
 
     await page.fill('input[placeholder="Cliente (opcional)"]', 'Multi-item');
     await page.click('button:has-text("Crear orden")');
-    await page.waitForSelector('text=Cobrar todo', { timeout: 10000 });
-
+    await page.waitForSelector('text=Cobrar', { timeout: 10000 });
+    await page.click('button:has-text("Cobrar")');
+    await page.waitForSelector('text=Cobrar todo', { timeout: 5000 });
     await page.click('button:has-text("Cobrar todo")');
     await page.waitForTimeout(500);
     await page.click('button:has-text("Cerrar orden")');

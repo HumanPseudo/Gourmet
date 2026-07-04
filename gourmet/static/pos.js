@@ -4,7 +4,7 @@ document.addEventListener('alpine:init', () => {
     cart: [], tableId: '', orderId: null, customerName: '', orderDiscount: 0,
     payMethod: 'cash', payAmount: 0, payError: '',
     totalPaid: 0, orderSubtotal: 0, orderTotal: 0,
-    createOrderError: '', closeError: '', closed: false, tipAmount: 0,
+    createOrderError: '', closeError: '', closed: false, tipAmount: 0, showPay: false,
     loadError: '',
     methods: [
       { value: 'cash', label: '\u{1F4B5} Efectivo', color: '#28a745' },
@@ -150,7 +150,7 @@ document.addEventListener('alpine:init', () => {
       this.cart = []; this.orderId = null; this.payMethod = 'cash';
       this.payAmount = 0; this.payError = ''; this.totalPaid = 0;
       this.orderSubtotal = 0; this.orderTotal = 0; this.customerName = ''; this.orderDiscount = 0;
-      this.createOrderError = ''; this.closeError = ''; this.closed = false; this.tipAmount = 0;
+      this.createOrderError = ''; this.closeError = ''; this.closed = false; this.tipAmount = 0; this.showPay = false;
     },
   }));
 });
