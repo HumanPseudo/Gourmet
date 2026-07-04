@@ -31,6 +31,7 @@ document.addEventListener('alpine:init', () => {
       } catch (e) {
         this.loadError = 'Error al cargar datos: ' + e.message;
       }
+      setInterval(() => this.refreshTables(), 30000);
     },
 
     get stockClass() {
@@ -154,13 +155,25 @@ document.addEventListener('alpine:init', () => {
       });
       if (!res.ok) { const err = await res.json(); this.closeError = err.error || 'Error'; return; }
       this.closed = true;
+      await this.refreshTables();
     },
 
-    resetAll() {
+    async refreshTables() {
+      try {
+        const r = await fetch('/api/tables');
+        if (!r.ok) return;
+        const data = await r.json();
+        this.tables = data.items || data || [];
+      } catch (_) {}
+    },
+
+    async resetAll() {
       this.cart = []; this.orderItems = []; this.orderId = null; this.payMethod = 'cash';
       this.payAmount = 0; this.payError = ''; this.totalPaid = 0;
       this.orderSubtotal = 0; this.orderTotal = 0; this.customerName = ''; this.orderDiscount = 0;
       this.createOrderError = ''; this.closeError = ''; this.closed = false; this.tipAmount = 0; this.showPay = false;
+      await this.refreshTables();
     },
+
   }));
 });
