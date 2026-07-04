@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 from decimal import Decimal
 from uuid import UUID
@@ -11,8 +12,9 @@ from django.utils import timezone
 
 from gourmet.apps.inventory.models import InventoryMovement, ProductRecipe
 from gourmet.apps.menu.models import Product
+from gourmet.apps.tables.models import Table
 
-from .models import Order, OrderItem, Payment
+from .models import Invoice, Order, OrderItem, Payment
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,10 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def create(table_id: UUID | None, notes: str) -> Order:
+        if table_id:
+            Table.objects.filter(pk=table_id, is_active=True).update(
+                status=Table.Status.OCCUPIED
+            )
         return Order.objects.create(
             table_id=table_id,
             notes=notes,
@@ -156,10 +162,31 @@ class OrderService:
             raise ValueError(
                 f"Order total is {order.total} but only {paid} paid"
             )
+        if order.table_id:
+            Table.objects.filter(pk=order.table_id).update(status=Table.Status.AVAILABLE)
         order.status = Order.Status.CLOSED
         order.closed_at = timezone.now()
         order.save(update_fields=["status", "closed_at"])
+        OrderService._create_invoice(order)
         return OrderService.get(order.pk)
+
+    @staticmethod
+    def _create_invoice(order: Order) -> None:
+        items_xml = "".join(
+            f"<item><name>{i.product_name}</name><qty>{i.quantity}</qty>"
+            f"<price>{i.product_price}</price><tax>{i.tax_rate}</tax></item>"
+            for i in order.items.exclude(status=OrderItem.Status.CANCELLED)
+        )
+        xml = (
+            f"<invoice><id>{order.pk}</id>"
+            f"<date>{order.closed_at or order.created_at}</date>"
+            f"<subtotal>{order.subtotal}</subtotal><total>{order.total}</total>"
+            f"{items_xml}</invoice>"
+        )
+        cufe = hashlib.sha256(xml.encode()).hexdigest().upper()
+        Invoice.objects.create(
+            order=order, xml=xml, cufe=cufe, status=Invoice.Status.PENDING
+        )
 
     @staticmethod
     @transaction.atomic
@@ -180,7 +207,7 @@ class OrderService:
                 status__in=(OrderItem.Status.PENDING, OrderItem.Status.PREPARING)
             )
             .select_related("order")
-            .order_by("created_at")
+            .order_by("priority", "created_at")
         )
 
     @staticmethod
@@ -194,7 +221,16 @@ class OrderService:
             ),
         )
         item.status = status
-        item.save(update_fields=["status"])
+        if status == OrderItem.Status.PREPARING and not item.started_at:
+            item.started_at = timezone.now()
+        item.save(update_fields=["status", "started_at"])
+        return item
+
+    @staticmethod
+    def set_item_priority(item_id: UUID, priority: int) -> OrderItem:
+        item = get_object_or_404(OrderItem, pk=item_id)
+        item.priority = priority
+        item.save(update_fields=["priority"])
         return item
 
     @staticmethod
