@@ -1,4 +1,4 @@
-{% load humanize %}<html><head><meta charset="utf-8"><title>Kitchen #{{ order.pk|stringformat:"s"|slice:":8" }}</title>
+{% load static %}{% load humanize %}<html><head><meta charset="utf-8"><title>Kitchen #{{ order.pk|stringformat:"s"|slice:":8" }}</title>
 <style>
   @page { margin: 0; size: 80mm auto; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,7 +29,7 @@
     <p>Gracias — Gourmet POS</p>
   </div>
   <div class="no-print" style="text-align:center;margin-top:12px;">
-    <button onclick="window.print()" style="padding:8px 24px;font-size:14px;">🖨 Imprimir</button>
+    <button class="print-btn" style="padding:8px 24px;font-size:14px;cursor:pointer;">🖨 Imprimir</button>
   </div>
-  <script>window.print()</script>
+  <script src="{% static 'print.js' %}"></script>
 </body></html>

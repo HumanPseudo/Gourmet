@@ -1,4 +1,4 @@
-{% load humanize %}<html><head><meta charset="utf-8"><title>Ticket #{{ order.pk|stringformat:"s"|slice:":8" }}</title>
+{% load static %}{% load humanize %}<html><head><meta charset="utf-8"><title>Ticket #{{ order.pk|stringformat:"s"|slice:":8" }}</title>
 <style>
   @page { margin: 0; size: 80mm auto; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -11,13 +11,14 @@
   .item-qty { text-align: center; width: 30px; }
   .item-price { text-align: right; width: 70px; }
   .total-row td { font-weight: 700; font-size: 14px; padding-top: 8px; border-top: 1px dashed #000; }
+  .tax-row td { font-size: 11px; color: #555; }
   .payments { margin-top: 8px; }
   .footer { text-align: center; margin-top: 16px; font-size: 10px; color: #888; }
   @media print { .no-print { display: none; } }
 </style></head><body>
   <div class="hdr">
-    <h1>Gourmet</h1>
-    <p>NIT: 123.456.789-0</p>
+    <h1>{{ business_name|default:"Gourmet" }}</h1>
+    <p>NIT: {{ business_nit|default:"123.456.789-0" }}</p>
     <p>Factura de Venta</p>
   </div>
   <p><strong>#:</strong> {{ order.pk|stringformat:"s"|slice:":8" }}</p>
@@ -36,6 +37,9 @@
   <table>
     <tr><td>Subtotal</td><td class="item-price">${{ order.subtotal|floatformat:2 }}</td></tr>
     {% if order.discount_amount %}<tr><td>Descuento</td><td class="item-price">-${{ order.discount_amount|floatformat:2 }}</td></tr>{% endif %}
+    {% for rate, amount in tax_totals.items %}
+    <tr class="tax-row"><td>{% if rate == 8 %}INC 8%{% elif rate == 19 %}IVA 19%{% elif rate == 5 %}IVA 5%{% else %}Impuesto {{ rate }}%{% endif %}</td><td class="item-price">${{ amount|floatformat:2 }}</td></tr>
+    {% endfor %}
     <tr class="total-row"><td>Total</td><td class="item-price">${{ order.total|floatformat:2 }}</td></tr>
   </table>
   {% if order.payments.all %}
@@ -50,9 +54,12 @@
     <p>Gracias por su visita</p>
     <p>{{ order.created_at|date:"d/m/Y H:i" }}</p>
     {% if order.closed_at %}<p>Cerrada: {{ order.closed_at|date:"d/m/Y H:i" }}</p>{% endif %}
+    {% for invoice in order.invoices.all %}
+      <p style="font-size:9px;word-break:break-all;">CUFE: {{ invoice.cufe|slice:":48" }}...</p>
+    {% endfor %}
   </div>
   <div class="no-print" style="text-align:center;margin-top:12px;">
-    <button onclick="window.print()" style="padding:8px 24px;font-size:14px;">🖨 Imprimir</button>
+    <button class="print-btn" style="padding:8px 24px;font-size:14px;cursor:pointer;">🖨 Imprimir</button>
   </div>
-  <script>window.print()</script>
+  <script src="{% static 'print.js' %}"></script>
 </body></html>
