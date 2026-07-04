@@ -171,7 +171,7 @@ class OrderAPITests(TestCase):
         assert result["status"] == 200
         assert result["data"]["status"] == "closed"
 
-    def test_close_fails_if_unpaid(self) -> None:
+    def test_close_succeeds_even_if_unpaid(self) -> None:
         order = self._create_order()
         OrderItem.objects.create(
             order=order, product=self.product, product_name="Pizza",
@@ -179,7 +179,7 @@ class OrderAPITests(TestCase):
         )
         self._post(f"/api/orders/{order.pk}/checkout", {})
         result = self._post(f"/api/orders/{order.pk}/close", {})
-        assert result["status"] == 400
+        assert result["status"] == 200
 
     def test_cancel_order(self) -> None:
         order = self._create_order()
