@@ -52,7 +52,10 @@ class OrderService:
 
     @staticmethod
     @transaction.atomic
-    def create(table_id: UUID | None, notes: str, customer_name: str = "", discount_amount: Decimal | None = None) -> Order:
+    def create(
+        table_id: UUID | None, notes: str,
+        customer_name: str = "", discount_amount: Decimal | None = None,
+    ) -> Order:
         if table_id:
             Table.objects.filter(pk=table_id, is_active=True).update(
                 status=Table.Status.OCCUPIED

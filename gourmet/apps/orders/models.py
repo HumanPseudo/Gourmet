@@ -201,16 +201,16 @@ class DailyClose(models.Model):
     cash_opening: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
-    cash_counted: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+    cash_counted: models.DecimalField[Decimal | None, Decimal | None] = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
 
     class Meta:
         ordering = ["-closed_at"]
 
+    def __str__(self) -> str:
+        return f"Close {self.closed_at:%Y-%m-%d %H:%M}"
+
     @property
     def diff(self) -> Decimal:
         return (self.cash_counted or Decimal("0")) - self.cash_opening - self.total_cash
-
-    def __str__(self) -> str:
-        return f"Close {self.closed_at:%Y-%m-%d %H:%M}"

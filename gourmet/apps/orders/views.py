@@ -238,10 +238,8 @@ def dashboard(request):
     hasta = request.GET.get("hasta", "")
     if desde and hasta:
         try:
-            parts = desde.split("-")
-            d = django_tz.datetime(int(parts[0]), int(parts[1]), int(parts[2]))
-            parts = hasta.split("-")
-            h = django_tz.datetime(int(parts[0]), int(parts[1]), int(parts[2]), 23, 59, 59)
+            d = django_tz.datetime(*map(int, desde.split("-")))
+            h = django_tz.datetime(*map(int, hasta.split("-")), 23, 59, 59)
             orders = Order.objects.filter(
                 created_at__range=(d, h), status=Order.Status.CLOSED,
             ).prefetch_related("payments", "items")
@@ -355,28 +353,31 @@ def sales_csv(request):
     desde = request.GET.get("desde", "")
     hasta = request.GET.get("hasta", "")
     today = django_tz.localdate()
+    base = Order.objects.filter(
+        status=Order.Status.CLOSED,
+    ).prefetch_related("items", "payments")
     if desde and hasta:
         try:
-            parts = desde.split("-")
-            d = django_tz.datetime(int(parts[0]), int(parts[1]), int(parts[2]))
-            parts = hasta.split("-")
-            h = django_tz.datetime(int(parts[0]), int(parts[1]), int(parts[2]), 23, 59, 59)
-            orders = Order.objects.filter(
-                created_at__range=(d, h), status=Order.Status.CLOSED,
-            ).prefetch_related("items", "payments")
+            d = django_tz.datetime(*map(int, desde.split("-")))
+            h = django_tz.datetime(*map(int, hasta.split("-")), 23, 59, 59)
+            orders = base.filter(created_at__range=(d, h))
         except (ValueError, IndexError):
-            orders = Order.objects.filter(created_at__date=today, status=Order.Status.CLOSED).prefetch_related("items", "payments")
+            orders = base.filter(created_at__date=today)
     else:
-        orders = Order.objects.filter(created_at__date=today, status=Order.Status.CLOSED).prefetch_related("items", "payments")
+        orders = base.filter(created_at__date=today)
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = "attachment; filename=ventas.csv"
     w = csv.writer(response)
-    w.writerow(["Orden", "Fecha", "Mesa", "Subtotal", "Descuento", "Total", "Metodo", "Propina"])
+    w.writerow([
+        "Orden", "Fecha", "Mesa", "Subtotal", "Descuento", "Total", "Metodo", "Propina",
+    ])
     for o in orders:
+        row = [str(o.pk)[:8], o.created_at, o.table.code if o.table else "",
+               o.subtotal, o.discount_amount, o.total]
         for p in o.payments.all():
-            w.writerow([str(o.pk)[:8], o.created_at, o.table.code if o.table else "", o.subtotal, o.discount_amount, o.total, p.method, p.tip])
+            w.writerow([*row, p.method, p.tip])
         if not o.payments.exists():
-            w.writerow([str(o.pk)[:8], o.created_at, o.table.code if o.table else "", o.subtotal, o.discount_amount, o.total, "", ""])
+            w.writerow([*row, "", ""])
     return response
 
 
