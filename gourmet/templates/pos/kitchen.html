@@ -1,39 +1,36 @@
 {% extends "base.html" %}
+{% load static %}
 {% block head_title %}Cocina | Gourmet{% endblock %}
 {% block content %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<script src="{% static 'htmx-csrf.js' %}"></script>
+<style>
+  .kcard { border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; }
+  .kcard.pending { background: #fff; }
+  .kcard.preparing { background: #fff3cd; }
+  .kcard.ready { background: #d4edda; }
+  .kcard.delayed { border-color: #dc3545; box-shadow: 0 0 0 2px #dc354533; }
+  .timer { font-variant-numeric: tabular-nums; }
+  .timer-ok { color: #28a745; }
+  .timer-warn { color: #ffc107; }
+  .timer-bad { color: #dc3545; font-weight: 700; }
+</style>
+
 <div style="padding: 20px;">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h1 style="margin: 0;">Cocina</h1>
-    <span hx-get="{% url 'kitchen' %}" hx-trigger="every 15s" hx-target="body" hx-swap="innerHTML" style="font-size: 12px; color: #999;">recargando cada 15s...</span>
+    <span style="font-size: 12px; color: #999;">recargando cada 15s...</span>
   </div>
-  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+
+  <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+    <span style="background: #17a2b8; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Pendientes: {{ items|length }}</span>
+    <span style="background: #ffc107; color: #333; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Preparando: {{ items|length }}</span>
+    <span style="background: #28a745; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Listos: 0</span>
+  </div>
+
+  <div hx-get="{% url 'kitchen' %}" hx-trigger="every 15s" hx-target="body" hx-swap="innerHTML" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
     {% for item in items %}
-      <div id="item-{{ item.pk }}" style="border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; background: {% if item.status == 'preparing' %}#fff3cd{% else %}#fff{% endif %};">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-          <strong style="font-size: 16px;">{{ item.product_name }}</strong>
-          <span style="background: {% if item.status == 'pending' %}#17a2b8{% else %}#ffc107{% endif %}; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 12px;">{{ item.status }}</span>
-        </div>
-        <div style="color: #666; font-size: 14px; margin-bottom: 8px;">
-          <strong>{{ item.quantity }}</strong> x ${{ item.product_price|floatformat:2 }}
-          {% if item.order.table %} | Mesa <strong>{{ item.order.table.code }}</strong>{% endif %}
-        </div>
-        {% if item.notes %}
-          <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; font-size: 13px; margin-bottom: 8px; border-left: 3px solid #17a2b8;">
-            {{ item.notes }}
-          </div>
-        {% endif %}
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 12px; color: #999;">{{ item.created_at|time:"H:i" }}</span>
-          <div>
-            {% if item.status == 'pending' %}
-              <button hx-patch="/api/orders/{{ item.order_id }}/items/{{ item.pk }}/status" hx-vals='{"status": "preparing"}' hx-target="#item-{{ item.pk }}" hx-swap="outerHTML" style="background: #007bff; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">Preparar</button>
-            {% endif %}
-            {% if item.status == 'preparing' %}
-              <button hx-patch="/api/orders/{{ item.order_id }}/items/{{ item.pk }}/status" hx-vals='{"status": "ready"}' hx-target="#item-{{ item.pk }}" hx-swap="outerHTML" style="background: #28a745; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">Listo</button>
-            {% endif %}
-          </div>
-        </div>
-      </div>
+      {% include "pos/_kitchen_card.html" %}
     {% empty %}
       <p style="color: #666; grid-column: 1 / -1; text-align: center; padding: 40px;">No hay items pendientes</p>
     {% endfor %}
