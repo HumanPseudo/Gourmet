@@ -27,6 +27,7 @@ from gourmet.apps.orders.views import (
     create_order,
     dashboard,
     kitchen,
+    menu_public,
     order_detail,
     order_list,
     pos,
@@ -34,6 +35,8 @@ from gourmet.apps.orders.views import (
     pos_close,
     pos_create_order,
     pos_pay,
+    pos_set_priority,
+    pos_update_item_status,
     print_kitchen,
     print_receipt,
     split_order,
@@ -79,4 +82,11 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("pos/inventory/", inventory_list, name="inventory_list"),
     path("pos/inventory/movements/", movement_list, name="movement_list"),
     path("pos/inventory/recipes/", recipe_list, name="recipe_list"),
+    path("pos/priority/<uuid:item_id>/", pos_set_priority, name="pos_set_priority"),
+    path(
+        "pos/orders/<uuid:order_id>/items/<uuid:item_id>/status/",
+        pos_update_item_status,
+        name="pos_update_item_status",
+    ),
+    path("menu/", menu_public, name="menu_public"),
 ]
