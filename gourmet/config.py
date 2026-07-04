@@ -106,6 +106,14 @@ class Config(GoodConf):
         default="http://localhost:9863/api/v1",
         description="URL for the Pear (Music Player Desktop) API",
     )
+    BUSINESS_NAME: str = Field(
+        default="Gourmet",
+        description="Business name shown on receipts",
+    )
+    BUSINESS_NIT: str = Field(
+        default="123.456.789-0",
+        description="Business NIT shown on receipts",
+    )
 
     model_config = {"default_files": ["gourmet.yml"]}
 

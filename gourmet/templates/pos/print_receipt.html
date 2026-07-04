@@ -23,6 +23,7 @@
   </div>
   <p><strong>#:</strong> {{ order.pk|stringformat:"s"|slice:":8" }}</p>
   {% if order.table %}<p><strong>Mesa:</strong> {{ order.table.code }}</p>{% endif %}
+  {% if order.customer_name %}<p><strong>Cliente:</strong> {{ order.customer_name }}</p>{% endif %}
   <p><strong>Fecha:</strong> {{ order.created_at|date:"d/m/Y H:i" }}</p>
   <table>
     <tr><th>Cant</th><th>Producto</th><th>Total</th></tr>

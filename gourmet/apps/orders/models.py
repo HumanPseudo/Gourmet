@@ -4,6 +4,7 @@ import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from django.conf import settings
 from django.db import models
 
 if TYPE_CHECKING:
@@ -26,6 +27,9 @@ class Order(models.Model):
         null=True,
         blank=True,
         related_name="orders",
+    )
+    customer_name: models.CharField[str, str] = models.CharField(
+        max_length=100, blank=True, default=""
     )
     status: models.CharField[str, str] = models.CharField(
         max_length=16,
@@ -181,3 +185,32 @@ class Invoice(models.Model):
 
     def __str__(self) -> str:
         return f"Invoice {self.pk} ({self.status})"
+
+
+class DailyClose(models.Model):
+    closed_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now_add=True)
+    closed_by: models.ForeignKey[Any, Any] = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
+    )
+    total_sales: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=14, decimal_places=2
+    )
+    total_cash: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=14, decimal_places=2
+    )
+    cash_opening: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
+    )
+    cash_counted: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+
+    class Meta:
+        ordering = ["-closed_at"]
+
+    @property
+    def diff(self) -> Decimal:
+        return (self.cash_counted or Decimal("0")) - self.cash_opening - self.total_cash
+
+    def __str__(self) -> str:
+        return f"Close {self.closed_at:%Y-%m-%d %H:%M}"

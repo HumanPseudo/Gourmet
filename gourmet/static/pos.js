@@ -1,7 +1,7 @@
 document.addEventListener('alpine:init', () => {
   Alpine.data('posApp', () => ({
     categories: [], products: [], activeCat: '', search: '',
-    cart: [], tableId: '', orderId: null,
+    cart: [], tableId: '', orderId: null, customerName: '', orderDiscount: 0,
     payMethod: 'cash', payAmount: 0, payError: '',
     totalPaid: 0, orderSubtotal: 0, orderTotal: 0,
     createOrderError: '', closeError: '', closed: false, tipAmount: 0,
@@ -91,6 +91,8 @@ document.addEventListener('alpine:init', () => {
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrf },
         body: JSON.stringify({
           table_id: this.tableId || null,
+          customer_name: this.customerName,
+          discount_amount: this.orderDiscount,
           items: this.cart.map(i => ({ product_id: i.id, quantity: i.qty })),
         }),
       });
@@ -146,7 +148,7 @@ document.addEventListener('alpine:init', () => {
     resetAll() {
       this.cart = []; this.orderId = null; this.payMethod = 'cash';
       this.payAmount = 0; this.payError = ''; this.totalPaid = 0;
-      this.orderSubtotal = 0; this.orderTotal = 0;
+      this.orderSubtotal = 0; this.orderTotal = 0; this.customerName = ''; this.orderDiscount = 0;
       this.createOrderError = ''; this.closeError = ''; this.closed = false; this.tipAmount = 0;
     },
   }));

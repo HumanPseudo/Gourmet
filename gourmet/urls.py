@@ -24,6 +24,7 @@ from gourmet.apps.inventory.views import inventory_list, movement_list, recipe_l
 from gourmet.apps.orders.views import (
     add_payment,
     close_order,
+    close_report,
     create_order,
     dashboard,
     kitchen,
@@ -39,6 +40,8 @@ from gourmet.apps.orders.views import (
     pos_update_item_status,
     print_kitchen,
     print_receipt,
+    reopen_order,
+    sales_csv,
     split_order,
 )
 
@@ -72,6 +75,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("pos/orders/<uuid:order_id>/", order_detail, name="order_detail"),
     path("pos/orders/<uuid:order_id>/pay/", add_payment, name="add_payment"),
     path("pos/orders/<uuid:order_id>/close/", close_order, name="close_order"),
+    path("pos/orders/<uuid:order_id>/reopen/", reopen_order, name="reopen_order"),
     path("pos/orders/<uuid:order_id>/split/", split_order, name="split_order"),
     path("pos/orders/<uuid:order_id>/print/", print_receipt, name="print_receipt"),
     path(
@@ -82,6 +86,8 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("pos/inventory/", inventory_list, name="inventory_list"),
     path("pos/inventory/movements/", movement_list, name="movement_list"),
     path("pos/inventory/recipes/", recipe_list, name="recipe_list"),
+    path("pos/close-report/", close_report, name="close_report"),
+    path("pos/reports/sales.csv", sales_csv, name="sales_csv"),
     path("pos/priority/<uuid:item_id>/", pos_set_priority, name="pos_set_priority"),
     path(
         "pos/orders/<uuid:order_id>/items/<uuid:item_id>/status/",

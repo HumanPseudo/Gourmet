@@ -92,6 +92,13 @@
         <button type="submit" style="background: #28a745; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;">Cerrar orden</button>
       </form>
     </div>
+  {% elif order.status == 'closed' and user.is_superuser %}
+    <div style="margin-bottom:24px;">
+      <form method="post" action="{% url 'reopen_order' order.pk %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" style="background:#fd7e14;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;" onclick="return confirm('¿Reabrir esta orden?')">🔓 Reabrir orden</button>
+      </form>
+    </div>
   {% endif %}
 
   <h2 style="margin-bottom: 12px;">Pagos ({{ order.payments.count }})</h2>

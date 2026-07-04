@@ -4,6 +4,13 @@
 {% block content %}
 <meta name="csrf-token" content="{{ csrf_token }}">
 <script src="{% static 'htmx-csrf.js' %}"></script>
+<script>
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'kitchen-grid' && document.querySelectorAll('#kitchen-grid .kcard').length > 0) {
+    var a = new Audio('/static/sounds/new-order.mp3'); a.volume = 0.3; a.play().catch(function(){});
+  }
+});
+</script>
 <style>
   .kcard { border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; }
   .kcard.pending { background: #fff; }
@@ -28,7 +35,7 @@
     <span style="background: #28a745; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Listos: 0</span>
   </div>
 
-  <div hx-get="{% url 'kitchen' %}" hx-trigger="every 15s" hx-target="body" hx-swap="innerHTML" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
+  <div id="kitchen-grid" hx-get="{% url 'kitchen' %}" hx-trigger="every 15s" hx-target="body" hx-swap="innerHTML" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
     {% for item in items %}
       {% include "pos/_kitchen_card.html" %}
     {% empty %}

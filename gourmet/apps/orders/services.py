@@ -52,7 +52,7 @@ class OrderService:
 
     @staticmethod
     @transaction.atomic
-    def create(table_id: UUID | None, notes: str) -> Order:
+    def create(table_id: UUID | None, notes: str, customer_name: str = "", discount_amount: Decimal | None = None) -> Order:
         if table_id:
             Table.objects.filter(pk=table_id, is_active=True).update(
                 status=Table.Status.OCCUPIED
@@ -60,6 +60,8 @@ class OrderService:
         return Order.objects.create(
             table_id=table_id,
             notes=notes,
+            customer_name=customer_name,
+            discount_amount=discount_amount or Decimal("0.00"),
         )
 
     @staticmethod
@@ -232,6 +234,17 @@ class OrderService:
         item.priority = priority
         item.save(update_fields=["priority"])
         return item
+
+    @staticmethod
+    @transaction.atomic
+    def reopen(order_id: UUID) -> Order:
+        order = get_object_or_404(Order, pk=order_id, status=Order.Status.CLOSED)
+        order.status = Order.Status.OPEN
+        order.closed_at = None
+        order.save(update_fields=["status", "closed_at"])
+        if order.table_id:
+            Table.objects.filter(pk=order.table_id).update(status=Table.Status.OCCUPIED)
+        return OrderService.get(order.pk)
 
     @staticmethod
     def _deduct_inventory(product: Product, quantity: int) -> None:

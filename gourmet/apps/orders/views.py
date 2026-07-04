@@ -1,7 +1,9 @@
+import csv
 import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -13,7 +15,7 @@ from gourmet.apps.accounts.auth import role_required
 from gourmet.apps.menu.models import Product
 from gourmet.apps.tables.models import Table
 
-from .models import Order, OrderItem
+from .models import DailyClose, Order, OrderItem
 from .services import OrderService
 
 
@@ -41,6 +43,8 @@ def pos_create_order(request):
     try:
         order = OrderService.create(
             table_id=data.get("table_id"), notes=data.get("notes", ""),
+            customer_name=data.get("customer_name", ""),
+            discount_amount=Decimal(str(data.get("discount_amount", 0))),
         )
         for item in data.get("items", []):
             OrderService.add_item(
@@ -230,9 +234,28 @@ def close_order(request, order_id):
 @role_required("admin")
 def dashboard(request):
     today = django_tz.localdate()
-    orders = Order.objects.filter(
-        created_at__date=today, status=Order.Status.CLOSED,
-    ).prefetch_related("payments", "items")
+    desde = request.GET.get("desde", "")
+    hasta = request.GET.get("hasta", "")
+    if desde and hasta:
+        try:
+            parts = desde.split("-")
+            d = django_tz.datetime(int(parts[0]), int(parts[1]), int(parts[2]))
+            parts = hasta.split("-")
+            h = django_tz.datetime(int(parts[0]), int(parts[1]), int(parts[2]), 23, 59, 59)
+            orders = Order.objects.filter(
+                created_at__range=(d, h), status=Order.Status.CLOSED,
+            ).prefetch_related("payments", "items")
+        except (ValueError, IndexError):
+            desde = hasta = ""
+            orders = Order.objects.filter(
+                created_at__date=today, status=Order.Status.CLOSED,
+            ).prefetch_related("payments", "items")
+    else:
+        orders = Order.objects.filter(
+            created_at__date=today, status=Order.Status.CLOSED,
+        ).prefetch_related("payments", "items")
+        desde = today.isoformat()
+        hasta = today.isoformat()
 
     total_sales = Decimal("0.00")
     total_tax = Decimal("0.00")
@@ -259,6 +282,8 @@ def dashboard(request):
 
     return render(request, "pos/dashboard.html", {
         "today": today,
+        "desde": desde,
+        "hasta": hasta,
         "order_count": orders.count(),
         "total_sales": total_sales.quantize(Decimal("0.01")),
         "total_tax": total_tax.quantize(Decimal("0.01")),
@@ -268,6 +293,102 @@ def dashboard(request):
         "item_count": item_count,
         "top_products": top_sorted,
     })
+
+
+@role_required("admin")
+def close_report(request):
+    today = django_tz.localdate()
+    orders = Order.objects.filter(
+        created_at__date=today, status=Order.Status.CLOSED,
+    ).prefetch_related("payments", "items")
+    total_sales = Decimal("0.00")
+    total_cash = Decimal("0.00")
+    total_tax = Decimal("0.00")
+    total_tips = Decimal("0.00")
+    total_discount = Decimal("0.00")
+    for o in orders:
+        total_sales += o.total
+        total_discount += o.discount_amount
+        for p in o.payments.all():
+            total_tips += p.tip
+            if p.method == "cash":
+                total_cash += p.amount
+        for i in o.items.exclude(status=OrderItem.Status.CANCELLED):
+            total_tax += i.product_price * i.quantity * i.tax_rate
+    saved = None
+    diff = None
+    expected_cash = total_cash
+    if request.method == "POST":
+        cash_opening = Decimal(request.POST.get("cash_opening", "0"))
+        cash_counted = Decimal(request.POST.get("cash_counted", "0"))
+        expected_cash = cash_opening + total_cash
+        diff = cash_counted - expected_cash
+        saved = DailyClose.objects.create(
+            closed_by=request.user if request.user.is_authenticated else None,
+            total_sales=total_sales,
+            total_cash=total_cash,
+            cash_opening=cash_opening,
+            cash_counted=cash_counted,
+        )
+        saved_count = orders.count()
+    else:
+        saved_count = 0
+    history = DailyClose.objects.all()[:20]
+    return render(request, "pos/close_report.html", {
+        "today": today,
+        "order_count": orders.count(),
+        "saved_count": saved_count,
+        "total_sales": total_sales.quantize(Decimal("0.01")),
+        "total_cash": total_cash.quantize(Decimal("0.01")),
+        "total_tax": total_tax.quantize(Decimal("0.01")),
+        "total_tips": total_tips.quantize(Decimal("0.01")),
+        "total_discount": total_discount.quantize(Decimal("0.01")),
+        "expected_cash": expected_cash,
+        "diff": diff.quantize(Decimal("0.01")) if diff is not None else None,
+        "saved": saved,
+        "history": history,
+    })
+
+
+@role_required("admin")
+def sales_csv(request):
+    desde = request.GET.get("desde", "")
+    hasta = request.GET.get("hasta", "")
+    today = django_tz.localdate()
+    if desde and hasta:
+        try:
+            parts = desde.split("-")
+            d = django_tz.datetime(int(parts[0]), int(parts[1]), int(parts[2]))
+            parts = hasta.split("-")
+            h = django_tz.datetime(int(parts[0]), int(parts[1]), int(parts[2]), 23, 59, 59)
+            orders = Order.objects.filter(
+                created_at__range=(d, h), status=Order.Status.CLOSED,
+            ).prefetch_related("items", "payments")
+        except (ValueError, IndexError):
+            orders = Order.objects.filter(created_at__date=today, status=Order.Status.CLOSED).prefetch_related("items", "payments")
+    else:
+        orders = Order.objects.filter(created_at__date=today, status=Order.Status.CLOSED).prefetch_related("items", "payments")
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = "attachment; filename=ventas.csv"
+    w = csv.writer(response)
+    w.writerow(["Orden", "Fecha", "Mesa", "Subtotal", "Descuento", "Total", "Metodo", "Propina"])
+    for o in orders:
+        for p in o.payments.all():
+            w.writerow([str(o.pk)[:8], o.created_at, o.table.code if o.table else "", o.subtotal, o.discount_amount, o.total, p.method, p.tip])
+        if not o.payments.exists():
+            w.writerow([str(o.pk)[:8], o.created_at, o.table.code if o.table else "", o.subtotal, o.discount_amount, o.total, "", ""])
+    return response
+
+
+@role_required("admin")
+@require_POST
+def reopen_order(request, order_id):
+    try:
+        OrderService.reopen(order_id)
+        messages.success(request, "Orden reabierta")
+    except ValueError as e:
+        messages.error(request, str(e))
+    return redirect("order_detail", order_id=order_id)
 
 
 @role_required("waiter", "admin")
@@ -311,8 +432,8 @@ def print_receipt(request, order_id):
     return render(request, "pos/print_receipt.html", {
         "order": order,
         "tax_totals": tax_totals,
-        "business_name": "Gourmet",
-        "business_nit": "123.456.789-0",
+        "business_name": settings.BUSINESS_NAME,
+        "business_nit": settings.BUSINESS_NIT,
     })
 
 

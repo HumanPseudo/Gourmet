@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block head_title %}Corte de Caja | Gourmet{% endblock %}
+{% block content %}
+<style>
+  .card { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; }
+  .num { font-size: 24px; font-weight: 700; }
+  .label { font-size: 12px; color: #666; text-transform: uppercase; }
+</style>
+
+<h2 style="margin:0 0 16px;">🧾 Corte de Caja {{ today|date:"d/m/Y" }}</h2>
+<a href="{% url 'dashboard' %}" style="display:inline-block;margin-bottom:16px;color:#007bff;">← Dashboard</a>
+
+{% if saved %}
+  <div style="background:#d4edda;border:1px solid #c3e6cb;color:#155724;padding:12px;border-radius:8px;margin-bottom:16px;">Corte guardado — ${{ saved.total_sales|floatformat:2 }} en {{ saved_count }} órdenes</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px;">
+  <div class="card">
+    <div class="label">Órdenes</div>
+    <div class="num">{{ order_count }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Ventas</div>
+    <div class="num" style="color:#28a745;">${{ total_sales|floatformat:2 }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Efectivo</div>
+    <div class="num" style="color:#007bff;">${{ total_cash|floatformat:2 }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Impuestos</div>
+    <div class="num" style="color:#dc3545;">${{ total_tax|floatformat:2 }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Propinas</div>
+    <div class="num" style="color:#6f42c1;">${{ total_tips|floatformat:2 }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Descuentos</div>
+    <div class="num" style="color:#fd7e14;">${{ total_discount|floatformat:2 }}</div>
+  </div>
+</div>
+
+<form method="post" style="background:#f8f9fa;padding:20px;border-radius:8px;max-width:400px;">
+  {% csrf_token %}
+  <h3 style="margin:0 0 12px;">💰 Arqueo de caja</h3>
+  <div style="margin-bottom:12px;">
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Base inicial ($)</label>
+    <input type="number" name="cash_opening" step="0.01" value="0" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:14px;">
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Efectivo contado ($)</label>
+    <input type="number" name="cash_counted" step="0.01" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:14px;">
+  </div>
+  <div style="background:#fff3cd;padding:12px;border-radius:6px;margin-bottom:12px;font-size:14px;">
+    <strong>Efectivo esperado:</strong> ${{ expected_cash|floatformat:2 }}<br>
+    {% if diff is not None %}
+      <strong>Diferencia:</strong> <span style="color:{% if diff >= 0 %}#28a745{% else %}#dc3545{% endif %};">${{ diff|floatformat:2 }}</span>
+    {% endif %}
+  </div>
+  <button type="submit" style="width:100%;padding:12px;background:#007bff;color:#fff;border:none;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;">Guardar Corte</button>
+</form>
+
+{% if history %}
+<div style="margin-top:24px;">
+  <h3>Historial de cortes</h3>
+  <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+    <thead><tr style="background:#f8f9fa;text-align:left;">
+      <th style="padding:8px;border-bottom:2px solid #dee2e6;">Fecha</th>
+      <th style="padding:8px;border-bottom:2px solid #dee2e6;">Ventas</th>
+      <th style="padding:8px;border-bottom:2px solid #dee2e6;">Efectivo</th>
+      <th style="padding:8px;border-bottom:2px solid #dee2e6;">Base</th>
+      <th style="padding:8px;border-bottom:2px solid #dee2e6;">Contado</th>
+      <th style="padding:8px;border-bottom:2px solid #dee2e6;">Dif</th>
+    </tr></thead>
+    <tbody>
+    {% for c in history %}
+      <tr style="border-bottom:1px solid #dee2e6;">
+        <td style="padding:8px;">{{ c.closed_at|date:"d/m H:i" }}</td>
+        <td style="padding:8px;">${{ c.total_sales|floatformat:2 }}</td>
+        <td style="padding:8px;">${{ c.total_cash|floatformat:2 }}</td>
+        <td style="padding:8px;">${{ c.cash_opening|floatformat:2 }}</td>
+        <td style="padding:8px;">${{ c.cash_counted|default:"-"|floatformat:2 }}</td>
+        <td style="padding:8px;color:{% if c.diff >= 0 %}#28a745{% else %}#dc3545{% endif %};">${{ c.diff|floatformat:2 }}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

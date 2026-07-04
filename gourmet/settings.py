@@ -375,6 +375,8 @@ LOGIN_REDIRECT_URL = "index"
 LOGOUT_REDIRECT_URL = "login"
 
 PEAR_API_URL = config.PEAR_API_URL
+BUSINESS_NAME = config.BUSINESS_NAME
+BUSINESS_NIT = config.BUSINESS_NIT
 
 # Warnings to silence in development
 SILENCED_SYSTEM_CHECKS: list[str] = []
