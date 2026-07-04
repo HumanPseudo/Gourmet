@@ -29,6 +29,8 @@ class OrderItemOut(Schema):
     quantity: int
     notes: str = ""
     status: str
+    priority: int = 0
+    started_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -77,4 +79,11 @@ class KitchenItemOut(Schema):
     quantity: int
     notes: str = ""
     status: str
+    priority: int = 0
+    started_at: datetime | None = None
     created_at: datetime
+    table_code: str = ""
+
+
+class PriorityIn(Schema):
+    priority: int
