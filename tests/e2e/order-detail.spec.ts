@@ -12,19 +12,19 @@ test.describe('Order detail & reopen', () => {
   test('order list shows orders', async ({ page }) => {
     await page.goto('/pos/orders/');
     await page.waitForSelector('text=Órdenes', { timeout: 10000 });
-    await expect(page.locator('table')).toBeVisible();
+    await expect(page.locator('.order-card').first()).toBeVisible();
   });
 
   test('closed order shows reopen button', async ({ page }) => {
     await page.goto('/pos/orders/');
-    await page.waitForSelector('table', { timeout: 10000 });
+    await page.waitForSelector('.order-card', { timeout: 10000 });
 
-    const closedRows = page.locator('table tr:has-text("closed")');
-    const count = await closedRows.count();
+    const closedCards = page.locator('.order-card.closed');
+    const count = await closedCards.count();
 
     if (count > 0) {
-      await closedRows.first().locator('a').first().click();
-      await page.waitForURL(/\/pos\/orders\//);
+      await closedCards.first().locator('.btn-ver').click();
+      await page.waitForURL(/\/pos\/orders\/[0-9a-f-]+\/?$/);
 
       await expect(page.locator('text=Reabrir orden')).toBeVisible();
     }

@@ -164,6 +164,9 @@ def order_list(request):
         .select_related("table")
         .prefetch_related("items", "payments")
     )
+    for o in orders:
+        o.total_paid_ = sum(p.amount for p in o.payments.all())
+        o.pending_ = o.total - o.total_paid_
     return render(request, "pos/orders.html", {"orders": orders})
 
 
@@ -175,7 +178,12 @@ def order_detail(request, order_id):
         ),
         pk=order_id,
     )
-    return render(request, "pos/order_detail.html", {"order": order})
+    total_paid = sum(p.amount for p in order.payments.all())
+    return render(request, "pos/order_detail.html", {
+        "order": order,
+        "total_paid": total_paid,
+        "pending": order.total - total_paid,
+    })
 
 
 @role_required("waiter", "admin")
