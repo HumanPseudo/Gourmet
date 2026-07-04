@@ -1,7 +1,7 @@
 document.addEventListener('alpine:init', () => {
   Alpine.data('posApp', () => ({
     categories: [], products: [], tables: [], activeCat: '', search: '',
-    cart: [], tableId: '', orderId: null, customerName: '', orderDiscount: 0, outOfStock: [],
+    cart: [], orderItems: [], tableId: '', orderId: null, customerName: '', orderDiscount: 0,
     payMethod: 'cash', payAmount: 0, payError: '',
     totalPaid: 0, orderSubtotal: 0, orderTotal: 0,
     createOrderError: '', closeError: '', closed: false, tipAmount: 0, showPay: false,
@@ -109,6 +109,7 @@ document.addEventListener('alpine:init', () => {
       this.orderId = data.id;
       this.orderSubtotal = parseFloat(data.subtotal || 0);
       this.orderTotal = parseFloat(data.total || 0);
+      this.orderItems = this.cart.map(i => ({ name: i.name, price: i.price, qty: i.qty, status: 'pending' }));
       this.cart = [];
       this.totalPaid = parseFloat(data.total_paid || 0);
     },
@@ -126,6 +127,7 @@ document.addEventListener('alpine:init', () => {
       const data = await res.json();
       this.orderSubtotal = parseFloat(data.subtotal || 0);
       this.orderTotal = parseFloat(data.total || 0);
+      this.orderItems = [...this.orderItems, ...this.cart.map(i => ({ name: i.name, price: i.price, qty: i.qty, status: 'pending' }))];
       this.cart = [];
       this.totalPaid = parseFloat(data.total_paid || 0);
     },
@@ -155,7 +157,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     resetAll() {
-      this.cart = []; this.orderId = null; this.payMethod = 'cash';
+      this.cart = []; this.orderItems = []; this.orderId = null; this.payMethod = 'cash';
       this.payAmount = 0; this.payError = ''; this.totalPaid = 0;
       this.orderSubtotal = 0; this.orderTotal = 0; this.customerName = ''; this.orderDiscount = 0;
       this.createOrderError = ''; this.closeError = ''; this.closed = false; this.tipAmount = 0; this.showPay = false;
