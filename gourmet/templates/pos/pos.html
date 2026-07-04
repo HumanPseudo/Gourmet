@@ -163,9 +163,9 @@
               </template>
             </div>
             <div style="display:flex;gap:8px;margin-bottom:8px;">
-              <input type="number" x-model="payAmount" step="0.01" :placeholder="'Monto ($'+remaining.toFixed(2)+')'" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;">
+              <input type="number" x-model="payAmount" step="0.01" :placeholder="'$'+remaining.toFixed(2)" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;">
               <input type="number" x-model="tipAmount" step="0.01" placeholder="Propina ($0)" style="width:90px;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:14px;">
-              <button @click="pay()" :disabled="!payMethod||payAmount<=0" style="padding:10px 20px;border:none;border-radius:6px;background:#28a745;color:#fff;font-weight:700;cursor:pointer;font-size:14px;">💳 Pagar</button>
+              <button @click="payRemaining()" style="padding:10px 20px;border:none;border-radius:6px;background:#28a745;color:#fff;font-weight:700;cursor:pointer;font-size:14px;">💳 Cobrar todo</button>
             </div>
             <div x-text="payError" style="color:#dc3545;font-size:12px;margin-bottom:4px;"></div>
             <div style="font-size:13px;color:#666;margin-bottom:8px;">

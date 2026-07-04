@@ -6,7 +6,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from django.db import transaction
-from django.db.models import Prefetch, QuerySet, Sum
+from django.db.models import Prefetch, QuerySet
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -159,14 +159,6 @@ class OrderService:
     @transaction.atomic
     def close(order_id: UUID) -> Order:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
-        paid = (
-            Payment.objects.filter(order=order).aggregate(total=Sum("amount"))["total"]
-            or Decimal("0.00")
-        )
-        if paid < order.total:
-            raise ValueError(
-                f"Order total is {order.total} but only {paid} paid"
-            )
         if order.table_id:
             Table.objects.filter(pk=order.table_id).update(status=Table.Status.AVAILABLE)
         order.status = Order.Status.CLOSED

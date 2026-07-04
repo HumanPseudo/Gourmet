@@ -122,12 +122,13 @@ document.addEventListener('alpine:init', () => {
       this.totalPaid = parseFloat(data.total_paid || 0);
     },
 
-    async pay() {
+    async payRemaining() {
       this.payError = '';
+      const amount = parseFloat(this.payAmount) > 0 ? parseFloat(this.payAmount) : this.remaining;
       const res = await fetch('/pos/pay/' + this.orderId + '/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrf },
-        body: JSON.stringify({ method: this.payMethod, amount: parseFloat(this.payAmount), tip: parseFloat(this.tipAmount || 0) }),
+        body: JSON.stringify({ method: this.payMethod, amount: amount, tip: parseFloat(this.tipAmount || 0) }),
       });
       if (!res.ok) { const err = await res.json(); this.payError = err.error || 'Error'; return; }
       const data = await res.json();

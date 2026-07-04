@@ -8,6 +8,9 @@
 - `make test` — `docker compose run --rm app pytest`.
 - Single file test: `docker compose run --rm app pytest gourmet/apps/accounts/tests.py -k test_name`.
 - `docker compose run --rm app bash` to enter a container.
+- `npm run seed` — `docker compose run --rm app python manage.py seed_today`.
+- `npm run test:e2e` — seeds today's data then runs Playwright E2E tests.
+- E2E tests in `tests/e2e/` use Playwright against `localhost:8000` (app must be running).
 
 ## Verification pipeline
 

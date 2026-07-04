@@ -4,13 +4,15 @@
   "description": "",
   "scripts": {
     "tailwind-build": "tailwindcss -i ./ui/main.css -o ./dist/bundles/main.css",
-    "tailwind-watch": "npm run tailwind-build -- --watch"
+    "tailwind-watch": "npm run tailwind-build -- --watch",
+    "test:e2e": "docker compose run --rm app python manage.py seed_today && npx playwright test"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@tailwindcss/cli": "4.2.4",
     "@alpinejs/csp": "3.15.12",
+    "@playwright/test": "1.61.1",
+    "@tailwindcss/cli": "4.2.4",
     "htmx.org": "2.0.10",
     "tailwindcss": "4.2.4"
   }

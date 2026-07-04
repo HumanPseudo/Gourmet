@@ -201,7 +201,9 @@ class DailyClose(models.Model):
     cash_opening: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
-    cash_counted: models.DecimalField[Decimal | None, Decimal | None] = models.DecimalField(
+    cash_counted: models.DecimalField[
+        Decimal | None, Decimal | None
+    ] = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
 
