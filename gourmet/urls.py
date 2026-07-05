@@ -20,7 +20,14 @@ from django.urls import URLPattern, URLResolver, include, path
 from django.views.generic import TemplateView
 
 from gourmet.apps.accounts.api import api
-from gourmet.apps.inventory.views import inventory_list, movement_list, recipe_list
+from gourmet.apps.inventory.views import (
+    inventory_adjust,
+    inventory_delete,
+    inventory_list,
+    movement_list,
+    recipe_list,
+    used_today,
+)
 from gourmet.apps.orders.views import (
     add_payment,
     close_order,
@@ -84,7 +91,18 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="print_kitchen",
     ),
     path("pos/inventory/", inventory_list, name="inventory_list"),
+    path(
+        "pos/inventory/<uuid:item_id>/adjust/",
+        inventory_adjust,
+        name="inventory_adjust",
+    ),
+    path(
+        "pos/inventory/<uuid:item_id>/delete/",
+        inventory_delete,
+        name="inventory_delete",
+    ),
     path("pos/inventory/movements/", movement_list, name="movement_list"),
+    path("pos/inventory/used-today/", used_today, name="used_today"),
     path("pos/inventory/recipes/", recipe_list, name="recipe_list"),
     path("pos/close-report/", close_report, name="close_report"),
     path("pos/reports/sales.csv", sales_csv, name="sales_csv"),

@@ -86,7 +86,6 @@ class OrderService:
             discount_percent=discount_percent or Decimal("0.00"),
             notes=notes,
         )
-        OrderService._deduct_inventory(product, quantity)
         return item
 
     @staticmethod
@@ -110,9 +109,9 @@ class OrderService:
     @transaction.atomic
     def remove_item(order_id: UUID, item_id: UUID) -> None:
         item = get_object_or_404(OrderItem, pk=item_id, order_id=order_id)
-        if item.product_id:
-            OrderService._reverse_inventory(item.product_id, item.quantity)
         if item.status not in (OrderItem.Status.PENDING,):
+            if item.product_id:
+                OrderService._reverse_inventory(item.product_id, item.quantity)
             item.status = OrderItem.Status.CANCELLED
             item.save()
         else:
@@ -216,6 +215,8 @@ class OrderService:
         )
 
     @staticmethod
+    @staticmethod
+    @transaction.atomic
     def set_item_status(order_id: UUID, item_id: UUID, status: str) -> OrderItem:
         item = get_object_or_404(
             OrderItem, pk=item_id, order_id=order_id,
@@ -225,10 +226,14 @@ class OrderService:
                 OrderItem.Status.READY,
             ),
         )
+        was_pending = item.status == OrderItem.Status.PENDING
         item.status = status
         if status == OrderItem.Status.PREPARING and not item.started_at:
             item.started_at = timezone.now()
         item.save(update_fields=["status", "started_at"])
+        if was_pending and status == OrderItem.Status.PREPARING:
+            if item.product_id and item.product:
+                OrderService._deduct_inventory(item.product, item.quantity)
         return item
 
     @staticmethod
@@ -264,7 +269,7 @@ class OrderService:
                     item=item,
                     type=InventoryMovement.Type.OUT,
                     quantity=needed,
-                    reference="order:auto",
+                    reference="cocina:preparado",
                 )
             else:
                 logger.warning(
