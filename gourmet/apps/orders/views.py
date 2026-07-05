@@ -11,6 +11,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone as django_tz
 from django.views.decorators.http import require_POST
 
+from gourmet.apps.accounts.audit import log_audit
 from gourmet.apps.accounts.auth import role_required
 from gourmet.apps.menu.models import Product
 from gourmet.apps.tables.models import Table
@@ -62,6 +63,7 @@ def pos_create_order(request):
             customer_name=data.get("customer_name", ""),
             discount_amount=Decimal(str(data.get("discount_amount", 0))),
         )
+        log_audit(request, "order.created", str(order.pk)[:8])
         for item in data.get("items", []):
             OrderService.add_item(
                 order.pk,
@@ -102,6 +104,8 @@ def pos_pay(request, order_id):
             data.get("reference", ""),
             Decimal(str(data.get("tip", 0))),
         )
+        log_audit(request, "payment.added", f"Order {str(order_id)[:8]}",
+                  f"{data['method']} ${data['amount']}")
         return JsonResponse(
             {
                 "id": str(payment.pk),
@@ -127,6 +131,7 @@ def pos_add_items(request, order_id):
             item.get("notes", ""),
             Decimal(str(item.get("discount_percent", 0))),
         )
+    log_audit(request, "order.items_added", f"Order {str(order_id)[:8]}")
     order = OrderService.checkout(order.pk)
     total_paid = sum(p.amount for p in order.payments.all())
     tax_total = sum(
@@ -149,6 +154,7 @@ def pos_add_items(request, order_id):
 def pos_close(request, order_id):
     try:
         OrderService.close(order_id)
+        log_audit(request, "order.closed", f"Order {str(order_id)[:8]}")
         return JsonResponse({"status": "closed"})
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=400)
@@ -242,6 +248,7 @@ def create_order(request):
         quantities = request.POST.getlist("quantity")
 
         order = OrderService.create(table_id=table_id, notes=notes)
+        log_audit(request, "order.created", str(order.pk)[:8])
 
         for pid, qty in zip(product_ids, quantities, strict=False):
             qty = int(qty)
@@ -267,6 +274,8 @@ def add_payment(request, order_id):
         reference = request.POST.get("reference", "")
         try:
             OrderService.pay(order_id, method, amount, reference)
+            log_audit(request, "payment.added", f"Order {str(order_id)[:8]}",
+                      f"{method} ${amount}")
             messages.success(request, "Pago registrado")
         except ValueError as e:
             messages.error(request, str(e))
@@ -279,6 +288,7 @@ def close_order(request, order_id):
     if request.method == "POST":
         try:
             OrderService.close(order_id)
+            log_audit(request, "order.closed", f"Order {str(order_id)[:8]}")
             messages.success(request, "Orden cerrada")
             return redirect("order_list")
         except ValueError as e:
@@ -391,6 +401,8 @@ def close_report(request):
             cash_opening=cash_opening,
             cash_counted=cash_counted,
         )
+        log_audit(request, "daily_close.saved",
+                  f"cash={total_cash} counted={cash_counted} diff={diff}")
         saved_count = orders.count()
     else:
         saved_count = 0
@@ -468,6 +480,7 @@ def sales_csv(request):
 def reopen_order(request, order_id):
     try:
         OrderService.reopen(order_id)
+        log_audit(request, "order.reopened", f"Order {str(order_id)[:8]}")
         messages.success(request, "Orden reabierta")
     except ValueError as e:
         messages.error(request, str(e))
@@ -494,6 +507,8 @@ def split_order(request, order_id):
         notes=f"Split from {str(order.pk)[:8]}",
     )
     items_to_move.update(order=new_order)
+    log_audit(request, "order.splitted",
+              f"Order {str(order_id)[:8]} → {str(new_order.pk)[:8]}")
     return JsonResponse(
         {
             "new_order_id": str(new_order.pk),
@@ -551,7 +566,9 @@ def pos_set_priority(request, item_id):
         data = json.loads(request.body)
     except json.JSONDecodeError:
         data = request.POST
-    OrderService.set_item_priority(item_id, int(data.get("priority", 0)))
+    priority = int(data.get("priority", 0))
+    OrderService.set_item_priority(item_id, priority)
+    log_audit(request, "item.priority", str(item_id)[:8], f"priority={priority}")
     item = get_object_or_404(
         OrderItem.objects.select_related("order__table"),
         pk=item_id,
@@ -603,6 +620,14 @@ def pos_update_item_status(request, order_id, item_id):
         request=request,
     )
     return HttpResponse(html)
+
+
+@role_required("admin")
+def audit_logs(request):
+    from gourmet.apps.accounts.models import AuditLog
+
+    logs = AuditLog.objects.select_related("user").all()[:200]
+    return render(request, "pos/audit_logs.html", {"logs": logs})
 
 
 def menu_public(request):

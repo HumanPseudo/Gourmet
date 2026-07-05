@@ -1,0 +1,32 @@
+{% extends "pos/base.html" %}{% load currency %}
+{% block title %}Auditoría{% endblock %}
+{% block content %}
+<h1 style="margin-bottom:16px;">📋 Registro de auditoría</h1>
+<table style="width:100%;border-collapse:collapse;">
+  <thead>
+    <tr style="background:#eee;text-align:left;">
+      <th style="padding:8px;border:1px solid #ddd;">Fecha</th>
+      <th style="padding:8px;border:1px solid #ddd;">Usuario</th>
+      <th style="padding:8px;border:1px solid #ddd;">Acción</th>
+      <th style="padding:8px;border:1px solid #ddd;">Objetivo</th>
+      <th style="padding:8px;border:1px solid #ddd;">Detalle</th>
+      <th style="padding:8px;border:1px solid #ddd;">IP</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td style="padding:6px;border:1px solid #ddd;">{{ log.created_at|date:"Y-m-d H:i" }}</td>
+      <td style="padding:6px;border:1px solid #ddd;">{{ log.user.name|default:log.user.email|default:"—" }}</td>
+      <td style="padding:6px;border:1px solid #ddd;">{{ log.action }}</td>
+      <td style="padding:6px;border:1px solid #ddd;">{{ log.target }}</td>
+      <td style="padding:6px;border:1px solid #ddd;">{{ log.detail }}</td>
+      <td style="padding:6px;border:1px solid #ddd;">{{ log.ip|default:"—" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" style="padding:16px;text-align:center;">Sin registros</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<a href="/pos/dashboard/" style="display:inline-block;margin-top:16px;">← Dashboard</a>
+{% endblock %}

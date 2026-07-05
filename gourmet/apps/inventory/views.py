@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from gourmet.apps.accounts.audit import log_audit
+
 from .models import InventoryItem, InventoryMovement
 from .services import InventoryService
 
@@ -30,6 +32,7 @@ def inventory_list(request):
                     min_stock,
                     Decimal(cost) if cost else None,
                 )
+                log_audit(request, "inventory.create", name)
                 messages.success(request, f"Insumo '{name}' creado")
         elif action == "edit":
             item = get_object_or_404(InventoryItem, pk=request.POST["item_id"])
@@ -69,6 +72,7 @@ def inventory_adjust(request, item_id):
             quantity=qty,
             reference=ref or "manual:in",
         )
+        log_audit(request, "inventory.adjust", item.name, f"+{qty} {item.unit}")
         messages.success(request, f"+{qty} {item.unit} a '{item.name}'")
     elif qty < 0:
         removed = min(-qty, item.stock)
@@ -82,6 +86,7 @@ def inventory_adjust(request, item_id):
             quantity=removed,
             reference=ref or "manual:out",
         )
+        log_audit(request, "inventory.adjust", item.name, f"-{removed} {item.unit}")
         messages.success(request, f"{removed} {item.unit} de '{item.name}'")
     else:
         messages.warning(request, "Cantidad debe ser diferente de 0")
@@ -94,6 +99,7 @@ def inventory_delete(request, item_id):
     item = get_object_or_404(InventoryItem, pk=item_id)
     name = item.name
     item.delete()
+    log_audit(request, "inventory.delete", name)
     messages.success(request, f"Insumo '{name}' eliminado")
     return HttpResponseRedirect("/pos/inventory/")
 

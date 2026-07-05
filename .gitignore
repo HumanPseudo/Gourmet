@@ -22,3 +22,8 @@ node_modules/
 plan.md
 test-results/
 playwright-report/
+.idea/
+*.log
+htmlcov/
+.coverage
+docker-compose.override.yml

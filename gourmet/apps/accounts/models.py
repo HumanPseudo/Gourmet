@@ -109,6 +109,23 @@ class User(AbstractUser):
         return self.email
 
 
+class AuditLog(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    action = models.CharField(max_length=50)
+    target = models.CharField(max_length=200, blank=True)
+    detail = models.CharField(max_length=500, blank=True)
+    ip = models.GenericIPAddressField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M} {self.user} {self.action}"
+
+
 class AuthToken(models.Model):
     key: models.CharField[str, str] = models.CharField(max_length=64, primary_key=True)
     user: models.ForeignKey[User, User] = models.ForeignKey(

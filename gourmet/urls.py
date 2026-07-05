@@ -30,6 +30,7 @@ from gourmet.apps.inventory.views import (
 )
 from gourmet.apps.orders.views import (
     add_payment,
+    audit_logs,
     close_order,
     close_report,
     create_order,
@@ -112,5 +113,6 @@ urlpatterns: list[URLPattern | URLResolver] = [
         pos_update_item_status,
         name="pos_update_item_status",
     ),
+    path("pos/audit-logs/", audit_logs, name="audit_logs"),
     path("menu/", menu_public, name="menu_public"),
 ]
