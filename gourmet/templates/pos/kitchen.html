@@ -12,34 +12,45 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
 });
 </script>
 <style>
-  .kcard { border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; }
-  .kcard.pending { background: #fff; }
-  .kcard.preparing { background: #fff3cd; }
-  .kcard.ready { background: #d4edda; }
-  .kcard.delayed { border-color: #dc3545; box-shadow: 0 0 0 2px #dc354533; }
-  .timer { font-variant-numeric: tabular-nums; }
-  .timer-ok { color: #28a745; }
-  .timer-warn { color: #ffc107; }
-  .timer-bad { color: #dc3545; font-weight: 700; }
+  .kcard { border:1px solid #dee2e6; border-radius:8px; padding:16px; }
+  .kcard.pending { background:#fff; }
+  .kcard.preparing { background:#fff3cd; }
+  .kcard.ready { background:#d4edda; }
+  .kcard.delayed { border-color:#dc3545; box-shadow:0 0 0 2px #dc354533; }
+  .timer { font-variant-numeric:tabular-nums; }
+  .timer-ok { color:#28a745; }
+  .timer-warn { color:#ffc107; }
+  .timer-bad { color:#dc3545; font-weight:700; }
+  .table-header { font-size:18px; font-weight:700; padding:8px 0; margin:16px 0 8px; border-bottom:2px solid #dee2e6; }
 </style>
 
-<div style="padding: 20px;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h1 style="margin: 0;">Cocina</h1>
-    <span style="font-size: 12px; color: #999;">recargando cada 15s...</span>
+<div style="padding:20px;max-width:1200px;margin:0 auto;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <h1 style="margin:0;font-size:22px;">🍳 Cocina</h1>
+    <span style="font-size:12px;color:#999;">auto-actualizando cada 15s</span>
   </div>
 
-  <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
-    <span style="background: #17a2b8; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Pendientes: {{ pending_count }}</span>
-    <span style="background: #ffc107; color: #333; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Preparando: {{ preparing_count }}</span>
-    <span style="background: #28a745; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px;">Listos: {{ ready_count }}</span>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <span style="background:#17a2b8;color:#fff;padding:4px 14px;border-radius:12px;font-size:13px;font-weight:600;">Pendientes: {{ pending_count }}</span>
+    <span style="background:#ffc107;color:#333;padding:4px 14px;border-radius:12px;font-size:13px;font-weight:600;">Preparando: {{ preparing_count }}</span>
+    <span style="background:#28a745;color:#fff;padding:4px 14px;border-radius:12px;font-size:13px;font-weight:600;">Listos: {{ ready_count }}</span>
   </div>
 
-  <div id="kitchen-grid" hx-get="{% url 'kitchen' %}" hx-trigger="every 15s" hx-target="body" hx-swap="innerHTML" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
-    {% for item in items %}
-      {% include "pos/_kitchen_card.html" %}
+  <div id="kitchen-grid" hx-get="{% url 'kitchen' %}" hx-trigger="every 15s" hx-target="body" hx-swap="innerHTML">
+    {% for table_code, table_items in groups.items %}
+      <div class="table-header">
+        🪑 Mesa {{ table_code }}
+        <span style="font-weight:400;font-size:13px;color:#888;margin-left:8px;">
+          {{ table_items|length }} item{{ table_items|length|pluralize:",s" }}
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:8px;">
+        {% for item in table_items %}
+          {% include "pos/_kitchen_card.html" %}
+        {% endfor %}
+      </div>
     {% empty %}
-      <p style="color: #666; grid-column: 1 / -1; text-align: center; padding: 40px;">No hay items pendientes</p>
+      <div style="padding:60px;text-align:center;color:#999;font-size:16px;">✅ Todos los items están listos o servidos</div>
     {% endfor %}
   </div>
 </div>

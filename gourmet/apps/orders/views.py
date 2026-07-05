@@ -26,16 +26,25 @@ def _mins(delta: timedelta) -> int:
 @role_required("waiter", "admin")
 def pos(request):
     from gourmet.apps.inventory.models import ProductRecipe
+
     tables = Table.objects.filter(is_active=True).order_by("code")
     tax_choices = Product.TaxChoices.choices
     out_of_stock = set()
+    low_stock = set()
     for r in ProductRecipe.objects.select_related("item").iterator():
         if r.item.stock < r.quantity:
             out_of_stock.add(str(r.product_id))
+        elif r.item.stock < r.quantity * 5:
+            low_stock.add(str(r.product_id))
     return render(
-        request, "pos/pos.html",
-        {"tables": tables, "tax_choices": tax_choices,
-         "out_of_stock_json": list(out_of_stock)},
+        request,
+        "pos/pos.html",
+        {
+            "tables": tables,
+            "tax_choices": tax_choices,
+            "out_of_stock_json": list(out_of_stock),
+            "low_stock_json": list(low_stock),
+        },
     )
 
 
@@ -48,7 +57,8 @@ def pos_create_order(request):
         return JsonResponse({"error": f"Invalid JSON: {e}"}, status=400)
     try:
         order = OrderService.create(
-            table_id=data.get("table_id"), notes=data.get("notes", ""),
+            table_id=data.get("table_id"),
+            notes=data.get("notes", ""),
             customer_name=data.get("customer_name", ""),
             discount_amount=Decimal(str(data.get("discount_amount", 0))),
         )
@@ -67,13 +77,15 @@ def pos_create_order(request):
             (i.product_price * i.quantity * i.tax_rate)
             for i in order.items.exclude(status=OrderItem.Status.CANCELLED)
         )
-        return JsonResponse({
-            "id": str(order.pk),
-            "subtotal": str(order.subtotal),
-            "total": str(order.total),
-            "tax_total": str(tax_total.quantize(Decimal("0.01"))),
-            "total_paid": str(total_paid),
-        })
+        return JsonResponse(
+            {
+                "id": str(order.pk),
+                "subtotal": str(order.subtotal),
+                "total": str(order.total),
+                "tax_total": str(tax_total.quantize(Decimal("0.01"))),
+                "total_paid": str(total_paid),
+            }
+        )
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
@@ -90,12 +102,14 @@ def pos_pay(request, order_id):
             data.get("reference", ""),
             Decimal(str(data.get("tip", 0))),
         )
-        return JsonResponse({
-            "id": str(payment.pk),
-            "amount": str(payment.amount),
-            "method": payment.method,
-            "tip": str(payment.tip),
-        })
+        return JsonResponse(
+            {
+                "id": str(payment.pk),
+                "amount": str(payment.amount),
+                "method": payment.method,
+                "tip": str(payment.tip),
+            }
+        )
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=400)
 
@@ -119,13 +133,15 @@ def pos_add_items(request, order_id):
         (i.product_price * i.quantity * i.tax_rate)
         for i in order.items.exclude(status=OrderItem.Status.CANCELLED)
     )
-    return JsonResponse({
-        "id": str(order.pk),
-        "subtotal": str(order.subtotal),
-        "total": str(order.total),
-        "tax_total": str(tax_total.quantize(Decimal("0.01"))),
-        "total_paid": str(total_paid),
-    })
+    return JsonResponse(
+        {
+            "id": str(order.pk),
+            "subtotal": str(order.subtotal),
+            "total": str(order.total),
+            "tax_total": str(tax_total.quantize(Decimal("0.01"))),
+            "total_paid": str(total_paid),
+        }
+    )
 
 
 @role_required("waiter", "admin")
@@ -157,14 +173,23 @@ def kitchen(request):
             preparing += 1
         elif i.status == "ready":
             ready += 1
-    return render(request, "pos/kitchen.html", {
-        "items": items,
-        "is_admin": request.user.is_superuser
-        or (request.user.role and request.user.role.name == "admin"),
-        "pending_count": pending,
-        "preparing_count": preparing,
-        "ready_count": ready,
-    })
+    groups: dict[str, list] = {}
+    for i in items:
+        table = i.table_code or "—"
+        groups.setdefault(table, []).append(i)
+    return render(
+        request,
+        "pos/kitchen.html",
+        {
+            "items": items,
+            "groups": groups,
+            "is_admin": request.user.is_superuser
+            or (request.user.role and request.user.role.name == "admin"),
+            "pending_count": pending,
+            "preparing_count": preparing,
+            "ready_count": ready,
+        },
+    )
 
 
 @role_required("waiter", "kitchen", "admin")
@@ -184,16 +209,21 @@ def order_list(request):
 def order_detail(request, order_id):
     order = get_object_or_404(
         Order.objects.select_related("table").prefetch_related(
-            "items__product", "payments",
+            "items__product",
+            "payments",
         ),
         pk=order_id,
     )
     total_paid = sum(p.amount for p in order.payments.all())
-    return render(request, "pos/order_detail.html", {
-        "order": order,
-        "total_paid": total_paid,
-        "pending": order.total - total_paid,
-    })
+    return render(
+        request,
+        "pos/order_detail.html",
+        {
+            "order": order,
+            "total_paid": total_paid,
+            "pending": order.total - total_paid,
+        },
+    )
 
 
 @role_required("waiter", "admin")
@@ -222,7 +252,8 @@ def create_order(request):
         return redirect("order_detail", order_id=order.pk)
 
     return render(
-        request, "pos/create_order.html",
+        request,
+        "pos/create_order.html",
         {"tables": tables, "products": products},
     )
 
@@ -265,16 +296,19 @@ def dashboard(request):
             d = django_tz.datetime(*map(int, desde.split("-")))
             h = django_tz.datetime(*map(int, hasta.split("-")), 23, 59, 59)
             orders = Order.objects.filter(
-                created_at__range=(d, h), status=Order.Status.CLOSED,
+                created_at__range=(d, h),
+                status=Order.Status.CLOSED,
             ).prefetch_related("payments", "items")
         except (ValueError, IndexError):
             desde = hasta = ""
             orders = Order.objects.filter(
-                created_at__date=today, status=Order.Status.CLOSED,
+                created_at__date=today,
+                status=Order.Status.CLOSED,
             ).prefetch_related("payments", "items")
     else:
         orders = Order.objects.filter(
-            created_at__date=today, status=Order.Status.CLOSED,
+            created_at__date=today,
+            status=Order.Status.CLOSED,
         ).prefetch_related("payments", "items")
         desde = today.isoformat()
         hasta = today.isoformat()
@@ -302,26 +336,31 @@ def dashboard(request):
 
     top_sorted = sorted(top_products.items(), key=lambda x: -x[1])[:10]
 
-    return render(request, "pos/dashboard.html", {
-        "today": today,
-        "desde": desde,
-        "hasta": hasta,
-        "order_count": orders.count(),
-        "total_sales": total_sales.quantize(Decimal("0.01")),
-        "total_tax": total_tax.quantize(Decimal("0.01")),
-        "total_tips": total_tips.quantize(Decimal("0.01")),
-        "total_discount": total_discount.quantize(Decimal("0.01")),
-        "by_method": by_method,
-        "item_count": item_count,
-        "top_products": top_sorted,
-    })
+    return render(
+        request,
+        "pos/dashboard.html",
+        {
+            "today": today,
+            "desde": desde,
+            "hasta": hasta,
+            "order_count": orders.count(),
+            "total_sales": total_sales.quantize(Decimal("0.01")),
+            "total_tax": total_tax.quantize(Decimal("0.01")),
+            "total_tips": total_tips.quantize(Decimal("0.01")),
+            "total_discount": total_discount.quantize(Decimal("0.01")),
+            "by_method": by_method,
+            "item_count": item_count,
+            "top_products": top_sorted,
+        },
+    )
 
 
 @role_required("admin")
 def close_report(request):
     today = django_tz.localdate()
     orders = Order.objects.filter(
-        created_at__date=today, status=Order.Status.CLOSED,
+        created_at__date=today,
+        status=Order.Status.CLOSED,
     ).prefetch_related("payments", "items")
     total_sales = Decimal("0.00")
     total_cash = Decimal("0.00")
@@ -356,20 +395,24 @@ def close_report(request):
     else:
         saved_count = 0
     history = DailyClose.objects.all()[:20]
-    return render(request, "pos/close_report.html", {
-        "today": today,
-        "order_count": orders.count(),
-        "saved_count": saved_count,
-        "total_sales": total_sales.quantize(Decimal("0.01")),
-        "total_cash": total_cash.quantize(Decimal("0.01")),
-        "total_tax": total_tax.quantize(Decimal("0.01")),
-        "total_tips": total_tips.quantize(Decimal("0.01")),
-        "total_discount": total_discount.quantize(Decimal("0.01")),
-        "expected_cash": expected_cash,
-        "diff": diff.quantize(Decimal("0.01")) if diff is not None else None,
-        "saved": saved,
-        "history": history,
-    })
+    return render(
+        request,
+        "pos/close_report.html",
+        {
+            "today": today,
+            "order_count": orders.count(),
+            "saved_count": saved_count,
+            "total_sales": total_sales.quantize(Decimal("0.01")),
+            "total_cash": total_cash.quantize(Decimal("0.01")),
+            "total_tax": total_tax.quantize(Decimal("0.01")),
+            "total_tips": total_tips.quantize(Decimal("0.01")),
+            "total_discount": total_discount.quantize(Decimal("0.01")),
+            "expected_cash": expected_cash,
+            "diff": diff.quantize(Decimal("0.01")) if diff is not None else None,
+            "saved": saved,
+            "history": history,
+        },
+    )
 
 
 @role_required("admin")
@@ -392,12 +435,27 @@ def sales_csv(request):
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = "attachment; filename=ventas.csv"
     w = csv.writer(response)
-    w.writerow([
-        "Orden", "Fecha", "Mesa", "Subtotal", "Descuento", "Total", "Metodo", "Propina",
-    ])
+    w.writerow(
+        [
+            "Orden",
+            "Fecha",
+            "Mesa",
+            "Subtotal",
+            "Descuento",
+            "Total",
+            "Metodo",
+            "Propina",
+        ]
+    )
     for o in orders:
-        row = [str(o.pk)[:8], o.created_at, o.table.code if o.table else "",
-               o.subtotal, o.discount_amount, o.total]
+        row = [
+            str(o.pk)[:8],
+            o.created_at,
+            o.table.code if o.table else "",
+            o.subtotal,
+            o.discount_amount,
+            o.total,
+        ]
         for p in o.payments.all():
             w.writerow([*row, p.method, p.tip])
         if not o.payments.exists():
@@ -425,26 +483,31 @@ def split_order(request, order_id):
         return JsonResponse({"error": "No items selected"}, status=400)
     order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
     items_to_move = OrderItem.objects.filter(
-        pk__in=item_ids, order=order,
+        pk__in=item_ids,
+        order=order,
         status__in=(OrderItem.Status.PENDING,),
     )
     if not items_to_move.exists():
         return JsonResponse({"error": "No movable items selected"}, status=400)
     new_order = Order.objects.create(
-        table=order.table, notes=f"Split from {str(order.pk)[:8]}",
+        table=order.table,
+        notes=f"Split from {str(order.pk)[:8]}",
     )
     items_to_move.update(order=new_order)
-    return JsonResponse({
-        "new_order_id": str(new_order.pk),
-        "moved": items_to_move.count(),
-    })
+    return JsonResponse(
+        {
+            "new_order_id": str(new_order.pk),
+            "moved": items_to_move.count(),
+        }
+    )
 
 
 @role_required("waiter", "admin")
 def print_receipt(request, order_id):
     order = get_object_or_404(
         Order.objects.select_related("table").prefetch_related(
-            "items__product", "payments",
+            "items__product",
+            "payments",
         ),
         pk=order_id,
     )
@@ -454,12 +517,16 @@ def print_receipt(request, order_id):
         rate_pct = int(i.tax_rate * 100)
         tax = i.product_price * i.quantity * i.tax_rate
         tax_totals[rate_pct] = tax_totals.get(rate_pct, Decimal("0")) + tax
-    return render(request, "pos/print_receipt.html", {
-        "order": order,
-        "tax_totals": tax_totals,
-        "business_name": settings.BUSINESS_NAME,
-        "business_nit": settings.BUSINESS_NIT,
-    })
+    return render(
+        request,
+        "pos/print_receipt.html",
+        {
+            "order": order,
+            "tax_totals": tax_totals,
+            "business_name": settings.BUSINESS_NAME,
+            "business_nit": settings.BUSINESS_NIT,
+        },
+    )
 
 
 @role_required("waiter", "kitchen", "admin")
@@ -471,7 +538,8 @@ def print_kitchen(request, order_id):
         pk=order_id,
     )
     return render(
-        request, "pos/print_kitchen.html",
+        request,
+        "pos/print_kitchen.html",
         {"order": order, "now": django_tz.now()},
     )
 
@@ -492,10 +560,14 @@ def pos_set_priority(request, item_id):
     item.elapsed = _mins(now - item.created_at) if item.created_at else 0
     item.preparing = _mins(now - item.started_at) if item.started_at else None
     item.table_code = item.order.table.code if item.order.table else ""
-    html = render_to_string("pos/_kitchen_card.html", {
-        "item": item,
-        "is_admin": True,
-    }, request=request)
+    html = render_to_string(
+        "pos/_kitchen_card.html",
+        {
+            "item": item,
+            "is_admin": True,
+        },
+        request=request,
+    )
     return HttpResponse(html)
 
 
@@ -512,17 +584,24 @@ def pos_update_item_status(request, order_id, item_id):
     OrderService.set_item_status(order_id, item_id, status)
     item = get_object_or_404(
         OrderItem.objects.select_related("order__table"),
-        pk=item_id, order_id=order_id,
+        pk=item_id,
+        order_id=order_id,
     )
     now = datetime.now(UTC)
     item.elapsed = _mins(now - item.created_at) if item.created_at else 0
     item.preparing = _mins(now - item.started_at) if item.started_at else None
     item.table_code = item.order.table.code if item.order.table else ""
-    html = render_to_string("pos/_kitchen_card.html", {
-        "item": item,
-        "is_admin": (request.user.is_superuser
-                     or (request.user.role and request.user.role.name == "admin")),
-    }, request=request)
+    html = render_to_string(
+        "pos/_kitchen_card.html",
+        {
+            "item": item,
+            "is_admin": (
+                request.user.is_superuser
+                or (request.user.role and request.user.role.name == "admin")
+            ),
+        },
+        request=request,
+    )
     return HttpResponse(html)
 
 
@@ -535,6 +614,7 @@ def menu_public(request):
     categories = {p.category for p in products if p.category}
     sorted_cats = sorted(categories, key=lambda c: c.sort_order)
     return render(
-        request, "pos/customer_menu.html",
+        request,
+        "pos/customer_menu.html",
         {"products": products, "categories": sorted_cats},
     )

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static %}{% load currency %}
 {% block head_title %}Orden #{{ order.pk|stringformat:".8s" }} | Gourmet{% endblock %}
 {% block content %}
 <style>
@@ -24,8 +24,8 @@
       </div>
     </div>
     <div style="text-align:right;">
-      <div class="amount-lg">${{ order.total|floatformat:2 }}</div>
-      <div style="color:#999;font-size:12px;">Subtotal: ${{ order.subtotal|floatformat:2 }}</div>
+      <div class="amount-lg">{{ order.total|floatformat:2|peso }}</div>
+      <div style="color:#999;font-size:12px;">Subtotal: {{ order.subtotal|floatformat:2|peso }}</div>
     </div>
   </div>
 
@@ -40,8 +40,8 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div style="font-weight:700;font-size:16px;">💳 Cobrar</div>
       <div style="text-align:right;">
-        <div style="font-size:12px;color:#888;">Pagado: ${{ total_paid|floatformat:2 }}</div>
-        <div style="font-size:20px;font-weight:700;color:#dc3545;">Falta: ${{ pending|floatformat:2 }}</div>
+        <div style="font-size:12px;color:#888;">Pagado: {{ total_paid|floatformat:2|peso }}</div>
+        <div style="font-size:20px;font-weight:700;color:#dc3545;">Falta: {{ pending|floatformat:2|peso }}</div>
       </div>
     </div>
     <meta name="csrf-token" content="{{ csrf_token }}">
@@ -106,7 +106,7 @@
           {{ item.product_name }}
           {% if item.notes %}<br><small style="color:#666;">{{ item.notes }}</small>{% endif %}
         </td>
-        <td style="padding:8px 10px;">${{ item.product_price|floatformat:2 }}</td>
+        <td style="padding:8px 10px;">{{ item.product_price|floatformat:2|peso }}</td>
         <td style="padding:8px 10px;">{{ item.quantity }}</td>
         <td style="padding:8px 10px;">
           <span style="background:{% if item.status == 'pending' %}#17a2b8{% elif item.status == 'preparing' %}#ffc107{% elif item.status == 'ready' %}#28a745{% elif item.status == 'served' %}#6c757d{% else %}#dc3545{% endif %};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">{{ item.status }}</span>
@@ -134,7 +134,7 @@
       {% for payment in order.payments.all %}
       <tr style="border-bottom:1px solid #eee;">
         <td style="padding:8px 10px;text-transform:capitalize;">{{ payment.method }}</td>
-        <td style="padding:8px 10px;">${{ payment.amount|floatformat:2 }}</td>
+        <td style="padding:8px 10px;">{{ payment.amount|floatformat:2|peso }}</td>
         <td style="padding:8px 10px;">{{ payment.reference|default:"-" }}</td>
         <td style="padding:8px 10px;">{{ payment.created_at|date:"d/m H:i" }}</td>
       </tr>

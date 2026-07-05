@@ -1,10 +1,11 @@
+{% load currency %}
 <div id="item-{{ item.pk }}" class="kcard {{ item.status }}{% if item.elapsed > 20 %} delayed{% endif %}">
   <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
     <strong style="font-size: 15px;">{{ item.product_name }}</strong>
     <span style="background: {% if item.status == 'pending' %}#17a2b8{% elif item.status == 'preparing' %}#ffc107{% else %}#28a745{% endif %}; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 11px;">{{ item.get_status_display }}</span>
   </div>
   <div style="color: #666; font-size: 13px; margin-bottom: 6px;">
-    <strong>{{ item.quantity }}</strong> x ${{ item.product_price|floatformat:2 }}
+    <strong>{{ item.quantity }}</strong> x {{ item.product_price|floatformat:2|peso }}
     {% if item.table_code %} | Mesa <strong>{{ item.table_code }}</strong>{% endif %}
   </div>
   <div style="display: flex; gap: 12px; font-size: 13px; margin-bottom: 8px;">
