@@ -5,6 +5,7 @@ document.addEventListener('alpine:init', () => {
     payMethod: 'cash', payAmount: 0, payError: '',
     totalPaid: 0, orderSubtotal: 0, orderTotal: 0,
     createOrderError: '', closeError: '', closed: false, tipAmount: 0, showPay: false,
+    outOfStock: [], lowStock: [],
     loadError: '',
     methods: [
       { value: 'cash', label: '\u{1F4B5} Efectivo', color: '#28a745' },
@@ -20,6 +21,8 @@ document.addEventListener('alpine:init', () => {
       try {
         const meta = document.querySelector('meta[name=out-of-stock]');
         if (meta) this.outOfStock = JSON.parse(meta.content);
+        const ls = document.querySelector('meta[name=low-stock]');
+        if (ls) this.lowStock = JSON.parse(ls.content);
         const [cats, prods, tabs] = await Promise.all([
           fetch('/api/menu/categories').then(r => { if (!r.ok) throw new Error('categories: ' + r.status); return r.json(); }),
           fetch('/api/menu/products').then(r => { if (!r.ok) throw new Error('products: ' + r.status); return r.json(); }),
@@ -49,6 +52,12 @@ document.addEventListener('alpine:init', () => {
     },
 
     _lineTotal(item) { return item.price * item.qty; },
+
+    _formatPeso(n) {
+      const parts = n.toFixed(2).split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return '$ ' + parts.join(',');
+    },
 
     get subtotal() {
       return this.cart.reduce((s, i) => s + this._lineTotal(i), 0);
@@ -145,17 +154,19 @@ document.addEventListener('alpine:init', () => {
       const data = await res.json();
       this.totalPaid += parseFloat(data.amount);
       this.payAmount = 0; this.tipAmount = 0; this.payError = '';
+      if (this.remaining <= 0.005) {
+        await this._closeAfterPay();
+      }
     },
 
-    async closeOrder() {
-      this.closeError = '';
+    async _closeAfterPay() {
       const res = await fetch('/pos/close/' + this.orderId + '/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': this.csrf },
+        method: 'POST', headers: { 'X-CSRFToken': this.csrf },
       });
-      if (!res.ok) { const err = await res.json(); this.closeError = err.error || 'Error'; return; }
-      this.closed = true;
-      await this.refreshTables();
+      if (res.ok) {
+        this.closed = true;
+        await this.refreshTables();
+      }
     },
 
     async refreshTables() {

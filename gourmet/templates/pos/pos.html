@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="out-of-stock" content="{{ out_of_stock_json|safe }}">
+  <meta name="low-stock" content="{{ low_stock_json|safe }}">
   <title>POS | Gourmet</title>
   <link rel="stylesheet" href="{% static 'bundles/main.css' %}">
   <style>
@@ -66,8 +67,9 @@
           <template x-for="p in filteredProducts" :key="p.id">
             <button class="pos-btn" :class="outOfStock.includes(p.id)?'oos':''" @click="addItem(p)" :disabled="outOfStock.includes(p.id)">
               <div class="name" x-text="p.name"></div>
-              <div class="price" x-text="'$' + parseFloat(p.price).toFixed(2)"></div>
+              <div class="price" x-text="_formatPeso(parseFloat(p.price))"></div>
               <div x-show="outOfStock.includes(p.id)" style="font-size:10px;color:#dc3545;font-weight:600;margin-top:2px;">Sin stock</div>
+              <div x-show="!outOfStock.includes(p.id) && lowStock.includes(p.id)" style="font-size:10px;color:#856404;font-weight:600;margin-top:2px;">⚠ Bajo stock</div>
             </button>
           </template>
         </div>
@@ -96,11 +98,11 @@
                 <div style="flex:1;">
                   <div x-text="item.name" style="font-weight:600;font-size:13px;"></div>
                   <div style="font-size:11px;color:#666;">
-                    <span x-text="item.qty"></span> x $<span x-text="item.price.toFixed(2)"></span>
+                    <span x-text="item.qty"></span> x <span x-text="_formatPeso(item.price)"></span>
                     <span x-show="item.status!=='pending'" style="margin-left:4px;font-size:10px;background:#eee;padding:1px 6px;border-radius:8px;" x-text="item.status"></span>
                   </div>
                 </div>
-                <div style="font-weight:600;font-size:13px;" x-text="'$'+(item.price*item.qty).toFixed(2)"></div>
+                <div style="font-weight:600;font-size:13px;" x-text="_formatPeso(item.price*item.qty)"></div>
               </div>
             </template>
             <div style="text-align:center;padding:8px 0;color:#999;font-size:11px;" x-show="orderItems.length===0">Cargando...</div>
@@ -111,14 +113,14 @@
             <div style="flex:1;">
               <div x-text="item.name" style="font-weight:600;font-size:14px;"></div>
               <div style="font-size:12px;color:#666;">
-                $<span x-text="parseFloat(item.price).toFixed(2)"></span>
+                <span x-text="_formatPeso(parseFloat(item.price))"></span>
               </div>
             </div>
             <button class="qty-btn" @click="changeQty(idx,-1)" :disabled="item.qty<=1">−</button>
             <span x-text="item.qty" style="font-weight:700;font-size:16px;min-width:24px;text-align:center;"></span>
             <button class="qty-btn" @click="changeQty(idx,1)">+</button>
             <div style="text-align:right;min-width:70px;">
-              <div style="font-weight:700;font-size:14px;" x-text="'$'+(item.price*item.qty).toFixed(2)"></div>
+              <div style="font-weight:700;font-size:14px;" x-text="_formatPeso(item.price*item.qty)"></div>
             </div>
             <button @click="removeItem(idx)" style="background:none;border:none;color:#dc3545;cursor:pointer;font-size:18px;padding:4px;">✕</button>
           </div>
@@ -129,17 +131,17 @@
           <div>
             <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px;">
               <span>Subtotal</span>
-              <span x-text="'$' + subtotal.toFixed(2)"></span>
+              <span x-text="_formatPeso(subtotal)"></span>
             </div>
             <template x-for="(amount, label) in taxBreakdown" :key="label">
               <div style="display:flex;justify-content:space-between;font-size:12px;color:#666;">
                 <span x-text="label"></span>
-                <span x-text="'$' + amount.toFixed(2)"></span>
+                <span x-text="_formatPeso(amount)"></span>
               </div>
             </template>
             <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-top:6px;padding-top:8px;border-top:2px solid #dee2e6;">
               <span>Total</span>
-              <span x-text="'$' + total.toFixed(2)"></span>
+              <span x-text="_formatPeso(total)"></span>
             </div>
           </div>
         </template>
@@ -147,11 +149,11 @@
           <div>
             <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px;">
               <span>Subtotal</span>
-              <span x-text="'$' + orderSubtotal.toFixed(2)"></span>
+              <span x-text="_formatPeso(orderSubtotal)"></span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-top:6px;padding-top:8px;border-top:2px solid #dee2e6;">
               <span>Total</span>
-              <span x-text="'$' + orderTotal.toFixed(2)"></span>
+              <span x-text="_formatPeso(orderTotal)"></span>
             </div>
           </div>
         </template>
@@ -184,16 +186,20 @@
               </template>
             </div>
             <div style="display:flex;gap:8px;margin-bottom:8px;">
-              <input type="number" x-model="payAmount" step="0.01" :placeholder="'$'+remaining.toFixed(2)" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;">
+              <input type="number" x-model="payAmount" step="0.01" :placeholder="_formatPeso(remaining)" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;">
               <input type="number" x-model="tipAmount" step="0.01" placeholder="Propina ($0)" style="width:90px;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:14px;">
-              <button @click="payRemaining()" style="padding:10px 20px;border:none;border-radius:6px;background:#28a745;color:#fff;font-weight:700;cursor:pointer;font-size:14px;">💳 Cobrar todo</button>
             </div>
-            <div x-text="payError" style="color:#dc3545;font-size:12px;margin-bottom:4px;"></div>
-            <div style="font-size:13px;color:#666;margin-bottom:8px;">
-              Pagado: $<span x-text="totalPaid.toFixed(2)"></span> / por pagar: $<span x-text="remaining.toFixed(2)"></span>
+            <div style="font-size:15px;margin-bottom:10px;display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid #eee;">
+              <span>Pagado:</span>
+              <span x-text="_formatPeso(totalPaid)" style="font-weight:700;color:#28a745;"></span>
             </div>
-            <button @click="closeOrder()" style="width:100%;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;background:#17a2b8;" x-text="remaining>0.005?'Pendiente de pago':'✅ Cerrar orden'"></button>
-            <div x-text="closeError" style="color:#dc3545;font-size:12px;margin-top:4px;"></div>
+            <div style="font-size:15px;margin-bottom:10px;display:flex;justify-content:space-between;">
+              <span>Por pagar:</span>
+              <span x-text="_formatPeso(remaining)" style="font-weight:700;color:#dc3545;" x-show="remaining>0.005"></span>
+              <span style="font-weight:700;color:#28a745;" x-show="remaining<=0.005">✅ Pagado</span>
+            </div>
+            <div x-text="payError" style="color:#dc3545;font-size:12px;margin-bottom:6px;"></div>
+            <button @click="payRemaining()" style="width:100%;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;background:#28a745;" x-show="remaining>0.005">💳 Cobrar todo</button>
           </div>
         </template>
 
@@ -201,7 +207,7 @@
           <div style="margin-top:12px;">
             <div style="background:#d4edda;border:1px solid #c3e6cb;color:#155724;padding:16px;border-radius:8px;text-align:center;font-weight:700;font-size:16px;">
               ✅ Orden cerrada<br>
-              <span style="font-size:14px;font-weight:400;">Total: $<span x-text="orderTotal.toFixed(2)"></span></span>
+              <span style="font-size:14px;font-weight:400;">Total: <span x-text="_formatPeso(orderTotal)"></span></span>
             </div>
             <a :href="'/pos/orders/' + orderId + '/print/'" target="_blank" style="display:block;text-align:center;margin-top:10px;padding:10px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">🖨️ Ver recibo</a>
           </div>

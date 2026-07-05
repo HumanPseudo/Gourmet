@@ -29,11 +29,7 @@ test.describe('POS flow', () => {
     await expect(page.getByText('Pagar', { exact: true })).toBeVisible();
 
     await page.click('button:has-text("Cobrar todo")');
-    await page.waitForTimeout(500);
-
-    await page.click('button:has-text("Cerrar orden")');
     await page.waitForSelector('text=Orden cerrada', { timeout: 10000 });
-
     await expect(page.locator('text=Orden cerrada')).toBeVisible();
     await expect(page.locator('text=Ver recibo')).toBeVisible();
   });
@@ -59,8 +55,6 @@ test.describe('POS flow', () => {
     await page.click('button:has-text("Cobrar")');
     await page.waitForSelector('text=Cobrar todo', { timeout: 5000 });
     await page.click('button:has-text("Cobrar todo")');
-    await page.waitForTimeout(500);
-    await page.click('button:has-text("Cerrar orden")');
     await page.waitForSelector('text=Orden cerrada', { timeout: 10000 });
   });
 });
