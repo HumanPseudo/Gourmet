@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load humanize %}{% load currency %}
 {% block head_title %}Dashboard | Gourmet{% endblock %}
 {% block content %}
 <style>
@@ -27,19 +27,19 @@
   </div>
   <div class="card">
     <div class="label">Ventas</div>
-    <div class="num" style="color:#28a745;">${{ total_sales|floatformat:2 }}</div>
+    <div class="num" style="color:#28a745;">{{ total_sales|floatformat:2|peso }}</div>
   </div>
   <div class="card">
     <div class="label">Impuestos</div>
-    <div class="num" style="color:#dc3545;">${{ total_tax|floatformat:2 }}</div>
+    <div class="num" style="color:#dc3545;">{{ total_tax|floatformat:2|peso }}</div>
   </div>
   <div class="card">
     <div class="label">Propinas</div>
-    <div class="num" style="color:#6f42c1;">${{ total_tips|floatformat:2 }}</div>
+    <div class="num" style="color:#6f42c1;">{{ total_tips|floatformat:2|peso }}</div>
   </div>
   <div class="card">
     <div class="label">Descuentos</div>
-    <div class="num" style="color:#fd7e14;">${{ total_discount|floatformat:2 }}</div>
+    <div class="num" style="color:#fd7e14;">{{ total_discount|floatformat:2|peso }}</div>
   </div>
   <div class="card">
     <div class="label">Items vendidos</div>
@@ -54,7 +54,7 @@
       {% for method, amount in by_method.items %}
       <tr>
         <td>{{ method|title }}</td>
-        <td style="text-align:right;font-weight:700;">${{ amount|floatformat:2 }}</td>
+        <td style="text-align:right;font-weight:700;">{{ amount|floatformat:2|peso }}</td>
       </tr>
       {% empty %}
       <tr><td colspan="2" style="color:#999;">Sin pagos hoy</td></tr>

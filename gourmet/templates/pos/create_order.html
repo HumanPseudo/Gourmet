@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load currency %}
 {% block head_title %}Crear orden | Gourmet{% endblock %}
 {% block content %}
 <div style="padding: 20px; max-width: 800px;">
@@ -30,7 +31,7 @@
               <input type="hidden" name="product_id" value="{{ product.pk }}">
               <input type="number" name="quantity" value="0" min="0" max="99" style="width: 50px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: center;">
               <span style="flex: 1;">{{ product.name }}</span>
-              <span style="color: #666; font-size: 13px;">${{ product.price|floatformat:2 }}</span>
+              <span style="color: #666; font-size: 13px;">{{ product.price|floatformat:2|peso }}</span>
             </label>
           {% endfor %}
         </div>

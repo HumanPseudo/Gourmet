@@ -1,4 +1,4 @@
-{% load static %}{% load humanize %}<html><head><meta charset="utf-8"><title>Ticket #{{ order.pk|stringformat:"s"|slice:":8" }}</title>
+{% load static %}{% load humanize %}{% load currency %}<html><head><meta charset="utf-8"><title>Ticket #{{ order.pk|stringformat:"s"|slice:":8" }}</title>
 <style>
   @page { margin: 0; size: 80mm auto; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -31,23 +31,23 @@
     <tr>
       <td class="item-qty">{{ item.quantity }}</td>
       <td>{{ item.product_name }}{% if item.notes %} ({{ item.notes }}){% endif %}</td>
-      <td class="item-price">${{ item.product_price|floatformat:2 }}</td>
+      <td class="item-price">{{ item.product_price|floatformat:2|peso }}</td>
     </tr>
     {% endfor %}
   </table>
   <table>
-    <tr><td>Subtotal</td><td class="item-price">${{ order.subtotal|floatformat:2 }}</td></tr>
-    {% if order.discount_amount %}<tr><td>Descuento</td><td class="item-price">-${{ order.discount_amount|floatformat:2 }}</td></tr>{% endif %}
+    <tr><td>Subtotal</td><td class="item-price">{{ order.subtotal|floatformat:2|peso }}</td></tr>
+    {% if order.discount_amount %}<tr><td>Descuento</td><td class="item-price">-{{ order.discount_amount|floatformat:2|peso }}</td></tr>{% endif %}
     {% for rate, amount in tax_totals.items %}
-    <tr class="tax-row"><td>{% if rate == 8 %}INC 8%{% elif rate == 19 %}IVA 19%{% elif rate == 5 %}IVA 5%{% else %}Impuesto {{ rate }}%{% endif %}</td><td class="item-price">${{ amount|floatformat:2 }}</td></tr>
+    <tr class="tax-row"><td>{% if rate == 8 %}INC 8%{% elif rate == 19 %}IVA 19%{% elif rate == 5 %}IVA 5%{% else %}Impuesto {{ rate }}%{% endif %}</td><td class="item-price">{{ amount|floatformat:2|peso }}</td></tr>
     {% endfor %}
-    <tr class="total-row"><td>Total</td><td class="item-price">${{ order.total|floatformat:2 }}</td></tr>
+    <tr class="total-row"><td>Total</td><td class="item-price">{{ order.total|floatformat:2|peso }}</td></tr>
   </table>
   {% if order.payments.all %}
   <div class="payments">
     <strong>Pagos:</strong>
     {% for p in order.payments.all %}
-    <div>{{ p.get_method_display }}: ${{ p.amount|floatformat:2 }}{% if p.tip %} (propina ${{ p.tip|floatformat:2 }}){% endif %}</div>
+    <div>{{ p.get_method_display }}: {{ p.amount|floatformat:2|peso }}{% if p.tip %} (propina {{ p.tip|floatformat:2|peso }}){% endif %}</div>
     {% endfor %}
   </div>
   {% endif %}
