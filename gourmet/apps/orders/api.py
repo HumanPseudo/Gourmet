@@ -236,17 +236,18 @@ def create_splits(
     order_id: UUID,
     payload: SplitByItemsIn | SplitByPercentageIn | SplitEqualIn,
 ) -> tuple[int, Any]:
-    data = payload.model_dump()  # type: ignore[union-attr]
+    data = payload.model_dump()
+    method = data.get("method", "by_items")
     try:
-        if "n_splits" in data:
+        if method == "equal":
             splits = OrderService.split_equal(
                 order_id, data["n_splits"], data["labels"],
             )
-        elif "splits" in data and data["splits"] and "percentage" in data["splits"][0]:
+        elif method == "by_percentage":
             splits = OrderService.split_by_percentage(order_id, data["splits"])
         else:
             splits = OrderService.split_by_items(order_id, data["splits"])
-    except (ValueError, Exception) as e:
+    except ValueError as e:
         return 400, {"detail": str(e)}
     return 201, [_split_to_out(s) for s in splits]
 

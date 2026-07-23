@@ -100,19 +100,22 @@ class SplitByItemsSplitIn(Schema):
 
 
 class SplitByItemsIn(Schema):
+    method: str = "by_items"
     splits: list[SplitByItemsSplitIn]
 
 
-class SplitByPercentageItemIn(Schema):
+class SplitByPercentageSplitIn(Schema):
     label: str
     percentage: Decimal
 
 
 class SplitByPercentageIn(Schema):
-    splits: list[SplitByPercentageItemIn]
+    method: str = "by_percentage"
+    splits: list[SplitByPercentageSplitIn]
 
 
 class SplitEqualIn(Schema):
+    method: str = "equal"
     n_splits: int
     labels: list[str]
 
