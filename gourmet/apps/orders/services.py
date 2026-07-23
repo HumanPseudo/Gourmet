@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from collections import defaultdict
 from decimal import Decimal
 from uuid import UUID
 
@@ -14,7 +15,7 @@ from gourmet.apps.inventory.models import InventoryMovement, ProductRecipe
 from gourmet.apps.menu.models import Product
 from gourmet.apps.tables.models import Table
 
-from .models import Invoice, Order, OrderItem, Payment
+from .models import BillSplit, BillSplitItem, Invoice, Order, OrderItem, Payment
 
 logger = logging.getLogger(__name__)
 
@@ -293,3 +294,159 @@ class OrderService:
                 quantity=qty,
                 reference="order:reverse",
             )
+
+    # ── Bill Splitting ─────────────────────────────────────────────
+
+    @staticmethod
+    def _parse_uuid(value: UUID | str) -> UUID:
+        """Parse a UUID from a string or pass through if already UUID."""
+        return UUID(value) if isinstance(value, str) else value
+
+    @staticmethod
+    @transaction.atomic
+    def split_by_items(order_id: UUID, splits_data: list[dict]) -> list[BillSplit]:
+        """Create splits with specific items/quantities per person."""
+        order = get_object_or_404(Order, pk=order_id)
+        items_qs = OrderItem.objects.filter(order=order).exclude(
+            status=OrderItem.Status.CANCELLED,
+        )
+        items_by_id: dict[UUID, OrderItem] = {i.pk: i for i in items_qs}
+
+        # Validate all order_item_ids belong to this order
+        for split_data in splits_data:
+            for item_data in split_data["items"]:
+                oi_id = OrderService._parse_uuid(item_data["order_item_id"])
+                if oi_id not in items_by_id:
+                    raise ValueError(f"Order item {oi_id} not found in order")
+
+        # Accumulate quantities across splits per order item
+        allocated: dict[UUID, int] = defaultdict(int)
+        for split_data in splits_data:
+            for item_data in split_data["items"]:
+                oi_id = OrderService._parse_uuid(item_data["order_item_id"])
+                allocated[oi_id] += item_data["quantity"]
+
+        # Validate total quantities don't exceed order item quantities
+        for oi_id, total_qty in allocated.items():
+            order_item = items_by_id[oi_id]
+            if total_qty > order_item.quantity:
+                raise ValueError(
+                    f"Total split quantity {total_qty} for "
+                    f"item '{order_item.product_name}' exceeds "
+                    f"order quantity {order_item.quantity}"
+                )
+
+        splits: list[BillSplit] = []
+        for split_data in splits_data:
+            split = BillSplit.objects.create(
+                order=order,
+                label=split_data["label"],
+                method=BillSplit.Method.BY_ITEMS,
+            )
+            amount = Decimal("0.00")
+            for item_data in split_data["items"]:
+                oi_id = OrderService._parse_uuid(item_data["order_item_id"])
+                order_item = items_by_id[oi_id]
+                BillSplitItem.objects.create(
+                    split=split,
+                    order_item=order_item,
+                    quantity=item_data["quantity"],
+                )
+                line_total = order_item.product_price * item_data["quantity"]
+                disc_pct = order_item.discount_percent / Decimal("100")
+                discount_amt = line_total * disc_pct
+                line_after = line_total - discount_amt
+                amount += line_after * (Decimal("1") + order_item.tax_rate)
+            split.amount = amount.quantize(Decimal("0.01"))
+            split.save(update_fields=["amount"])
+            splits.append(split)
+        return splits
+
+    @staticmethod
+    @transaction.atomic
+    def split_by_percentage(
+        order_id: UUID, percentages_data: list[dict]
+    ) -> list[BillSplit]:
+        """Split order total by percentage."""
+        order = get_object_or_404(Order, pk=order_id)
+        total_pct = sum(Decimal(str(d["percentage"])) for d in percentages_data)
+        if total_pct != Decimal("100.00"):
+            raise ValueError(
+                f"Percentages must sum to 100, got {total_pct}"
+            )
+        splits: list[BillSplit] = []
+        for data in percentages_data:
+            pct = Decimal(str(data["percentage"]))
+            amount = (order.total * pct / Decimal("100")).quantize(Decimal("0.01"))
+            split = BillSplit.objects.create(
+                order=order,
+                label=data["label"],
+                method=BillSplit.Method.BY_PERCENTAGE,
+                percentage=pct,
+                amount=amount,
+            )
+            splits.append(split)
+        return splits
+
+    @staticmethod
+    @transaction.atomic
+    def split_equal(
+        order_id: UUID, n_splits: int, labels: list[str]
+    ) -> list[BillSplit]:
+        """Split order total equally into N parts."""
+        order = get_object_or_404(Order, pk=order_id)
+        if n_splits < 2:
+            raise ValueError("Must have at least 2 splits")
+        if len(labels) != n_splits:
+            raise ValueError("Number of labels must match number of splits")
+        base_amount = (order.total / Decimal(n_splits)).quantize(Decimal("0.01"))
+        splits: list[BillSplit] = []
+        remaining = order.total
+        for i, label in enumerate(labels):
+            if i == n_splits - 1:
+                amount = remaining
+            else:
+                amount = base_amount
+            remaining -= amount
+            split = BillSplit.objects.create(
+                order=order,
+                label=label,
+                method=BillSplit.Method.EQUAL,
+                amount=amount,
+            )
+            splits.append(split)
+        return splits
+
+    @staticmethod
+    def get_splits(order_id: UUID) -> QuerySet[BillSplit]:
+        """List all splits for an order."""
+        return BillSplit.objects.filter(order_id=order_id).prefetch_related("items")
+
+    @staticmethod
+    @transaction.atomic
+    def mark_split_paid(
+        split_id: UUID, method: str, reference: str = "", tip: Decimal | None = None,
+    ) -> BillSplit:
+        """Mark a split as paid and create a Payment on the order."""
+        split = get_object_or_404(BillSplit, pk=split_id)
+        if split.paid:
+            raise ValueError("Split is already paid")
+        split.paid = True
+        split.save(update_fields=["paid"])
+        Payment.objects.create(
+            order=split.order,
+            amount=split.amount,
+            method=method,
+            reference=reference,
+            tip=tip or Decimal("0.00"),
+        )
+        return split
+
+    @staticmethod
+    @transaction.atomic
+    def delete_split(split_id: UUID) -> None:
+        """Remove a split."""
+        split = get_object_or_404(BillSplit, pk=split_id)
+        if split.paid:
+            raise ValueError("Cannot delete a paid split")
+        split.delete()
