@@ -238,6 +238,8 @@ def create_splits(
 ) -> tuple[int, Any]:
     data = payload.model_dump()
     method = data.get("method", "by_items")
+    if method not in ("by_items", "by_percentage", "equal"):
+        return 400, {"detail": f"Invalid method: {method}"}
     try:
         if method == "equal":
             splits = OrderService.split_equal(
