@@ -298,6 +298,11 @@ class OrderService:
     # ── Bill Splitting ─────────────────────────────────────────────
 
     @staticmethod
+    def _parse_uuid(value: UUID | str) -> UUID:
+        """Parse a UUID from a string or pass through if already UUID."""
+        return UUID(value) if isinstance(value, str) else value
+
+    @staticmethod
     @transaction.atomic
     def split_by_items(order_id: UUID, splits_data: list[dict]) -> list[BillSplit]:
         """Create splits with specific items/quantities per person."""
@@ -310,11 +315,7 @@ class OrderService:
         # Validate all order_item_ids belong to this order
         for split_data in splits_data:
             for item_data in split_data["items"]:
-                oi_id = (
-                    UUID(item_data["order_item_id"])
-                    if isinstance(item_data["order_item_id"], str)
-                    else item_data["order_item_id"]
-                )
+                oi_id = OrderService._parse_uuid(item_data["order_item_id"])
                 if oi_id not in items_by_id:
                     raise ValueError(f"Order item {oi_id} not found in order")
 
@@ -322,11 +323,7 @@ class OrderService:
         allocated: dict[UUID, int] = defaultdict(int)
         for split_data in splits_data:
             for item_data in split_data["items"]:
-                oi_id = (
-                    UUID(item_data["order_item_id"])
-                    if isinstance(item_data["order_item_id"], str)
-                    else item_data["order_item_id"]
-                )
+                oi_id = OrderService._parse_uuid(item_data["order_item_id"])
                 allocated[oi_id] += item_data["quantity"]
 
         # Validate total quantities don't exceed order item quantities
@@ -348,11 +345,7 @@ class OrderService:
             )
             amount = Decimal("0.00")
             for item_data in split_data["items"]:
-                oi_id = (
-                    UUID(item_data["order_item_id"])
-                    if isinstance(item_data["order_item_id"], str)
-                    else item_data["order_item_id"]
-                )
+                oi_id = OrderService._parse_uuid(item_data["order_item_id"])
                 order_item = items_by_id[oi_id]
                 BillSplitItem.objects.create(
                     split=split,
@@ -372,7 +365,7 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def split_by_percentage(
-        self, order_id: UUID, percentages_data: list[dict]
+        order_id: UUID, percentages_data: list[dict]
     ) -> list[BillSplit]:
         """Split order total by percentage."""
         order = get_object_or_404(Order, pk=order_id)
@@ -398,7 +391,7 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def split_equal(
-        self, order_id: UUID, n_splits: int, labels: list[str]
+        order_id: UUID, n_splits: int, labels: list[str]
     ) -> list[BillSplit]:
         """Split order total equally into N parts."""
         order = get_object_or_404(Order, pk=order_id)
