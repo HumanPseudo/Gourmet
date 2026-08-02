@@ -187,6 +187,59 @@ class Invoice(models.Model):
         return f"Invoice {self.pk} ({self.status})"
 
 
+class BillSplit(models.Model):
+    class Method(models.TextChoices):
+        BY_ITEMS = "by_items", "By Items"
+        BY_PERCENTAGE = "by_percentage", "By Percentage"
+        EQUAL = "equal", "Equal"
+
+    id: models.UUIDField[uuid.UUID, uuid.UUID] = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False
+    )
+    order: models.ForeignKey[Order, Order] = models.ForeignKey(
+        Order, on_delete=models.CASCADE, related_name="splits"
+    )
+    label: models.CharField[str, str] = models.CharField(max_length=100)
+    method: models.CharField[str, str] = models.CharField(
+        max_length=16, choices=Method.choices, default=Method.BY_ITEMS
+    )
+    percentage: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00")
+    )
+    amount: models.DecimalField[Decimal, Decimal] = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
+    )
+    paid: models.BooleanField[bool, bool] = models.BooleanField(default=False)
+    created_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self) -> str:
+        return f"Split {self.label} ({self.amount})"
+
+
+class BillSplitItem(models.Model):
+    id: models.UUIDField[uuid.UUID, uuid.UUID] = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False
+    )
+    split: models.ForeignKey[BillSplit, BillSplit] = models.ForeignKey(
+        BillSplit, on_delete=models.CASCADE, related_name="items"
+    )
+    order_item: models.ForeignKey[OrderItem, OrderItem] = models.ForeignKey(
+        OrderItem, on_delete=models.CASCADE
+    )
+    quantity: models.PositiveSmallIntegerField[int, int] = (
+        models.PositiveSmallIntegerField(default=1)
+    )
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self) -> str:
+        return f"SplitItem {self.order_item} x{self.quantity}"
+
+
 class DailyClose(models.Model):
     closed_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now_add=True)
     closed_by: models.ForeignKey[Any, Any] = models.ForeignKey(

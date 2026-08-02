@@ -18,6 +18,11 @@ from .schemas import (
     PaymentIn,
     PaymentOut,
     PriorityIn,
+    SplitByItemsIn,
+    SplitByPercentageIn,
+    SplitEqualIn,
+    SplitOut,
+    SplitPayIn,
 )
 from .services import OrderService
 
@@ -198,3 +203,87 @@ def update_item_status(
         return 400, {"detail": "status is required"}
     item = OrderService.set_item_status(order_id, item_id, payload.status)
     return 200, OrderItemOut.model_validate(item)
+
+
+# ── Bill Splitting ───────────────────────────────────────────────
+
+
+def _split_to_out(split: Any) -> SplitOut:
+    out = SplitOut.model_validate(split)
+    out.items = [
+        {"id": bi.pk, "order_item_id": bi.order_item_id, "quantity": bi.quantity}
+        for bi in split.items.all()
+    ]
+    return out
+
+
+@router.get(
+    "/{order_id}/splits",
+    response=list[SplitOut],
+    summary="List splits for an order",
+)
+def list_splits(request: HttpRequest, order_id: UUID) -> list[SplitOut]:
+    return [_split_to_out(s) for s in OrderService.get_splits(order_id)]
+
+
+@router.post(
+    "/{order_id}/splits",
+    response={201: list[SplitOut], 400: MessageOut},
+    summary="Create splits for an order",
+)
+def create_splits(
+    request: HttpRequest,
+    order_id: UUID,
+    payload: SplitByItemsIn | SplitByPercentageIn | SplitEqualIn,
+) -> tuple[int, Any]:
+    data = payload.model_dump()
+    method = data.get("method", "by_items")
+    if method not in ("by_items", "by_percentage", "equal"):
+        return 400, {"detail": f"Invalid method: {method}"}
+    try:
+        if method == "equal":
+            splits = OrderService.split_equal(
+                order_id, data["n_splits"], data["labels"],
+            )
+        elif method == "by_percentage":
+            splits = OrderService.split_by_percentage(order_id, data["splits"])
+        else:
+            splits = OrderService.split_by_items(order_id, data["splits"])
+    except ValueError as e:
+        return 400, {"detail": str(e)}
+    return 201, [_split_to_out(s) for s in splits]
+
+
+@router.post(
+    "/{order_id}/splits/{split_id}/pay",
+    response={200: SplitOut, 400: MessageOut},
+    summary="Pay a split",
+)
+def pay_split(
+    request: HttpRequest,
+    order_id: UUID,
+    split_id: UUID,
+    payload: SplitPayIn,
+) -> tuple[int, Any]:
+    try:
+        split = OrderService.mark_split_paid(
+            split_id, payload.method, payload.reference, payload.tip,
+        )
+    except ValueError as e:
+        return 400, {"detail": str(e)}
+    return 200, _split_to_out(split)
+
+
+@router.delete(
+    "/{order_id}/splits/{split_id}",
+    response={200: MessageOut, 400: MessageOut},
+    summary="Delete a split",
+)
+def delete_split(
+    request: HttpRequest, order_id: UUID, split_id: UUID,
+) -> tuple[int, MessageOut]:
+    try:
+        OrderService.delete_split(split_id)
+    except ValueError as e:
+        return 400, {"detail": str(e)}
+    return 200, MessageOut(detail="Split deleted")

@@ -87,3 +87,58 @@ class KitchenItemOut(Schema):
 
 class PriorityIn(Schema):
     priority: int
+
+
+class SplitItemIn(Schema):
+    order_item_id: UUID
+    quantity: int = 1
+
+
+class SplitByItemsSplitIn(Schema):
+    label: str
+    items: list[SplitItemIn]
+
+
+class SplitByItemsIn(Schema):
+    method: str = "by_items"
+    splits: list[SplitByItemsSplitIn]
+
+
+class SplitByPercentageSplitIn(Schema):
+    label: str
+    percentage: Decimal
+
+
+class SplitByPercentageIn(Schema):
+    method: str = "by_percentage"
+    splits: list[SplitByPercentageSplitIn]
+
+
+class SplitEqualIn(Schema):
+    method: str = "equal"
+    n_splits: int
+    labels: list[str]
+
+
+class SplitItemOut(Schema):
+    id: UUID
+    order_item_id: UUID
+    quantity: int
+
+
+class SplitOut(Schema):
+    id: UUID
+    order_id: UUID
+    label: str
+    method: str
+    percentage: Decimal
+    amount: Decimal
+    paid: bool
+    items: list[SplitItemOut]
+    created_at: datetime
+
+
+class SplitPayIn(Schema):
+    method: str
+    reference: str = ""
+    tip: Decimal = Decimal("0.00")

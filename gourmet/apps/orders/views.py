@@ -213,6 +213,8 @@ def order_list(request):
 
 @role_required("waiter", "kitchen", "admin")
 def order_detail(request, order_id):
+    from gourmet.apps.accounts.models import AuthToken
+
     order = get_object_or_404(
         Order.objects.select_related("table").prefetch_related(
             "items__product",
@@ -221,6 +223,7 @@ def order_detail(request, order_id):
         pk=order_id,
     )
     total_paid = sum(p.amount for p in order.payments.all())
+    token = AuthToken.objects.filter(user=request.user).first() or AuthToken.create_token(request.user)
     return render(
         request,
         "pos/order_detail.html",
@@ -228,6 +231,7 @@ def order_detail(request, order_id):
             "order": order,
             "total_paid": total_paid,
             "pending": order.total - total_paid,
+            "api_token": token.key,
         },
     )
 
@@ -507,6 +511,8 @@ def split_order(request, order_id):
         notes=f"Split from {str(order.pk)[:8]}",
     )
     items_to_move.update(order=new_order)
+    OrderService.checkout(new_order.pk)
+    new_order.refresh_from_db()
     log_audit(request, "order.splitted",
               f"Order {str(order_id)[:8]} → {str(new_order.pk)[:8]}")
     return JsonResponse(
