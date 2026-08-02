@@ -511,6 +511,8 @@ def split_order(request, order_id):
         notes=f"Split from {str(order.pk)[:8]}",
     )
     items_to_move.update(order=new_order)
+    OrderService.checkout(new_order.pk)
+    new_order.refresh_from_db()
     log_audit(request, "order.splitted",
               f"Order {str(order_id)[:8]} → {str(new_order.pk)[:8]}")
     return JsonResponse(
