@@ -298,11 +298,6 @@ class OrderService:
     # ── Bill Splitting ─────────────────────────────────────────────
 
     @staticmethod
-    def _parse_uuid(value: UUID | str) -> UUID:
-        """Parse a UUID from a string or pass through if already UUID."""
-        return UUID(value) if isinstance(value, str) else value
-
-    @staticmethod
     @transaction.atomic
     def split_by_items(order_id: UUID, splits_data: list[dict]) -> list[BillSplit]:
         """Create splits with specific items/quantities per person."""
@@ -315,7 +310,7 @@ class OrderService:
         # Validate all order_item_ids belong to this order
         for split_data in splits_data:
             for item_data in split_data["items"]:
-                oi_id = OrderService._parse_uuid(item_data["order_item_id"])
+                oi_id = item_data["order_item_id"]
                 if oi_id not in items_by_id:
                     raise ValueError(f"Order item {oi_id} not found in order")
 
@@ -323,8 +318,7 @@ class OrderService:
         allocated: dict[UUID, int] = defaultdict(int)
         for split_data in splits_data:
             for item_data in split_data["items"]:
-                oi_id = OrderService._parse_uuid(item_data["order_item_id"])
-                allocated[oi_id] += item_data["quantity"]
+                allocated[item_data["order_item_id"]] += item_data["quantity"]
 
         # Validate total quantities don't exceed order item quantities
         for oi_id, total_qty in allocated.items():
@@ -345,8 +339,7 @@ class OrderService:
             )
             amount = Decimal("0.00")
             for item_data in split_data["items"]:
-                oi_id = OrderService._parse_uuid(item_data["order_item_id"])
-                order_item = items_by_id[oi_id]
+                order_item = items_by_id[item_data["order_item_id"]]
                 BillSplitItem.objects.create(
                     split=split,
                     order_item=order_item,
