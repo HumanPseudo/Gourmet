@@ -9,14 +9,14 @@ Funcionalidades POS que SIESA tiene y Gourmet necesita para ser competitivo:
 - [x] UI para seleccionar qué items van en cada cuenta
 
 ### 1.2 Planos de mesa visual
-- [ ] Editor drag-and-drop de layouts de restaurante
+- [x] Editor drag-and-drop de layouts de restaurante
 - [ ] Vista de piso con mesas coloreadas (libre/ocupada/reservada)
 - [ ] Click en mesa → ver orden activa
 - [ ] Asignar mesas a meseros
 
 ### 1.3 Reservas
-- [ ] CRUD de reservas (fecha, hora, personas, mesa)
-- [ ] Vista calendario de reservas
+- [x] CRUD de reservas (fecha, hora, personas, mesa)
+- [x] Vista calendario de reservas
 - [ ] Recordatorios automáticos
 - [ ] Link público para reservas online
 
