@@ -11,7 +11,7 @@ from gourmet.apps.accounts.models import Role
 from gourmet.apps.menu.models import Category, Product
 from gourmet.apps.orders.models import Order, OrderItem, Payment
 from gourmet.apps.orders.services import OrderService
-from gourmet.apps.tables.models import Table
+from gourmet.apps.tables.models import Table, TableLayout, TableLayoutItem
 
 User = get_user_model()
 
@@ -60,11 +60,35 @@ class Command(BaseCommand):
             ("Mesa 4", 6),
             ("Barra", 1),
         ]
+        tables = {}
         for code, capacity in tables_data:
-            _, created = Table.objects.get_or_create(
+            table, created = Table.objects.get_or_create(
                 code=code, defaults={"capacity": capacity}
             )
+            tables[code] = table
             self.stdout.write(f"  {'Created' if created else 'Exists'} table: {code}")
+
+        layout, created = TableLayout.objects.get_or_create(
+            name="Salón Principal", defaults={"width": 640, "height": 420}
+        )
+        verb = "Created" if created else "Exists"
+        self.stdout.write(f"  {verb} layout: {layout.name}")
+
+        # Mesa 4 and Barra are left unplaced so the palette (drag-in) is exercised too.
+        layout_items = [
+            ("Mesa 1", 60, 60, "square", 0),
+            ("Mesa 2", 260, 60, "round", 0),
+            ("Mesa 3", 60, 240, "square", 90),
+        ]
+        for code, x, y, shape, rotation in layout_items:
+            _, created = TableLayoutItem.objects.update_or_create(
+                layout=layout, table=tables[code],
+                defaults={
+                    "pos_x": x, "pos_y": y, "shape": shape, "rotation": rotation
+                },
+            )
+            verb = "Placed" if created else "Updated"
+            self.stdout.write(f"  {verb} {code} on layout")
 
         cat_bebidas, _ = Category.objects.get_or_create(
             name="Bebidas", defaults={"sort_order": 1}
