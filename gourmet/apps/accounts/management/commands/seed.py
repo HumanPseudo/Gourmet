@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -11,6 +11,7 @@ from gourmet.apps.accounts.models import Role
 from gourmet.apps.menu.models import Category, Product
 from gourmet.apps.orders.models import Order, OrderItem, Payment
 from gourmet.apps.orders.services import OrderService
+from gourmet.apps.reservations.models import Reservation
 from gourmet.apps.tables.models import Table
 
 User = get_user_model()
@@ -60,11 +61,39 @@ class Command(BaseCommand):
             ("Mesa 4", 6),
             ("Barra", 1),
         ]
+        tables = {}
         for code, capacity in tables_data:
-            _, created = Table.objects.get_or_create(
+            table, created = Table.objects.get_or_create(
                 code=code, defaults={"capacity": capacity}
             )
+            tables[code] = table
             self.stdout.write(f"  {'Created' if created else 'Exists'} table: {code}")
+
+        today = timezone.localdate()
+        reservations_data = [
+            ("Laura Gómez", "3011112222", 4, today, "20:00", "Mesa 2", ""),
+            ("Andrés Ruiz", "3013334444", 2, today, "20:30", None, "Alérgico a maní"),
+            (
+                "Sofía Castro", "3015556666", 6, today + timedelta(days=1), "19:30",
+                "Mesa 4", "Cumpleaños",
+            ),
+        ]
+        for name, phone, size, day, hour, table_code, notes in reservations_data:
+            reserved_for = timezone.make_aware(
+                datetime.combine(day, datetime.strptime(hour, "%H:%M").time())
+            )
+            _, created = Reservation.objects.get_or_create(
+                customer_name=name,
+                reserved_for=reserved_for,
+                defaults={
+                    "customer_phone": phone,
+                    "party_size": size,
+                    "table": tables.get(table_code) if table_code else None,
+                    "notes": notes,
+                },
+            )
+            verb = "Created" if created else "Exists"
+            self.stdout.write(f"  {verb} reservation: {name} @ {hour}")
 
         cat_bebidas, _ = Category.objects.get_or_create(
             name="Bebidas", defaults={"sort_order": 1}

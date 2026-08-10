@@ -52,6 +52,11 @@ from gourmet.apps.orders.views import (
     sales_csv,
     split_order,
 )
+from gourmet.apps.reservations.views import (
+    reservation_calendar,
+    reservation_cancel,
+    reservation_list,
+)
 
 handler400 = "gourmet.views.bad_request"
 handler403 = "gourmet.views.permission_denied"
@@ -114,5 +119,16 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="pos_update_item_status",
     ),
     path("pos/audit-logs/", audit_logs, name="audit_logs"),
+    path("pos/reservations/", reservation_list, name="reservation_list"),
+    path(
+        "pos/reservations/calendar/",
+        reservation_calendar,
+        name="reservation_calendar",
+    ),
+    path(
+        "pos/reservations/<uuid:reservation_id>/cancel/",
+        reservation_cancel,
+        name="reservation_cancel",
+    ),
     path("menu/", menu_public, name="menu_public"),
 ]

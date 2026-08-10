@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block head_title %}Reservas | Gourmet{% endblock %}
+{% block content %}
+<div style="padding: 20px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 8px;">
+    <h1 style="margin: 0;">Reservas — {{ selected_date|date:"l d/m/Y" }}</h1>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <a href="?date={{ prev_date|date:'Y-m-d' }}" style="background: #6c757d; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">← Día anterior</a>
+      <a href="{% url 'reservation_calendar' %}" style="background: #6f42c1; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">📅 Calendario</a>
+      <a href="?date={{ next_date|date:'Y-m-d' }}" style="background: #6c757d; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">Día siguiente →</a>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div style="background: {% if msg.tags == 'success' %}#d4edda;color:#155724{% else %}#f8d7da;color:#721c24{% endif %};padding:10px 16px;border-radius:6px;margin-bottom:12px;font-size:14px;">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <details style="margin-bottom: 20px; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px;">
+    <summary style="cursor: pointer; font-weight: 600; font-size: 14px; color: #6f42c1;">+ Nueva reserva</summary>
+    <form method="post" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: end;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <label style="font-size: 12px; color: #333;">Cliente<br>
+        <input type="text" name="customer_name" required placeholder="Nombre" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; width: 160px;">
+      </label>
+      <label style="font-size: 12px; color: #333;">Teléfono<br>
+        <input type="text" name="customer_phone" placeholder="Opcional" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; width: 120px;">
+      </label>
+      <label style="font-size: 12px; color: #333;">Personas<br>
+        <input type="number" name="party_size" value="2" min="1" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; width: 70px;">
+      </label>
+      <label style="font-size: 12px; color: #333;">Fecha<br>
+        <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+      </label>
+      <label style="font-size: 12px; color: #333;">Hora<br>
+        <input type="time" name="time" value="19:00" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+      </label>
+      <label style="font-size: 12px; color: #333;">Mesa<br>
+        <select name="table_id" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+          <option value="">Sin asignar</option>
+          {% for t in tables %}
+            <option value="{{ t.id }}">{{ t.code }} ({{ t.capacity }}p)</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label style="font-size: 12px; color: #333; flex: 1; min-width: 140px;">Notas<br>
+        <input type="text" name="notes" placeholder="Opcional" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; width: 100%; box-sizing: border-box;">
+      </label>
+      <button type="submit" style="background: #6f42c1; color: #fff; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 14px;">Reservar</button>
+    </form>
+  </details>
+
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr style="background: #f8f9fa; text-align: left;">
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Hora</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Cliente</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Personas</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Mesa</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Estado</th>
+        <th style="padding: 10px; border-bottom: 2px solid #dee2e6;">Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reservations %}
+        <tr style="border-bottom: 1px solid #dee2e6;{% if r.status == 'cancelled' %} opacity: .5;{% endif %}">
+          <td style="padding: 10px; font-weight: 600;">{{ r.reserved_for|date:"H:i" }}</td>
+          <td style="padding: 10px;">
+            <details style="font-size: 13px;">
+              <summary style="cursor: pointer;">{{ r.customer_name }}{% if r.customer_phone %} — {{ r.customer_phone }}{% endif %}</summary>
+              {% if r.status != 'cancelled' %}
+                <form method="post" style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; align-items: end;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="edit">
+                  <input type="hidden" name="reservation_id" value="{{ r.id }}">
+                  <input type="text" name="customer_name" value="{{ r.customer_name }}" required style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; width: 120px;">
+                  <input type="text" name="customer_phone" value="{{ r.customer_phone }}" style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; width: 90px;">
+                  <input type="number" name="party_size" value="{{ r.party_size }}" min="1" style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; width: 50px;">
+                  <input type="date" name="date" value="{{ r.reserved_for|date:'Y-m-d' }}" required style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px;">
+                  <input type="time" name="time" value="{{ r.reserved_for|date:'H:i' }}" required style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px;">
+                  <select name="table_id" style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px;">
+                    <option value="">Sin asignar</option>
+                    {% for t in tables %}
+                      <option value="{{ t.id }}" {% if r.table_id == t.id %}selected{% endif %}>{{ t.code }}</option>
+                    {% endfor %}
+                  </select>
+                  <input type="text" name="notes" value="{{ r.notes }}" placeholder="Notas" style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; width: 100px;">
+                  <button type="submit" style="background: #007bff; color: #fff; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">Guardar</button>
+                </form>
+              {% endif %}
+            </details>
+            {% if r.notes %}<div style="font-size: 11px; color: #999; margin-top: 2px;">📝 {{ r.notes }}</div>{% endif %}
+          </td>
+          <td style="padding: 10px;">{{ r.party_size }}</td>
+          <td style="padding: 10px;">{{ r.table.code|default:"—" }}</td>
+          <td style="padding: 10px;">
+            {% if r.status == 'confirmed' %}
+              <span style="background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 10px; font-size: 12px;">Confirmada</span>
+            {% else %}
+              <span style="background: #f8d7da; color: #721c24; padding: 2px 8px; border-radius: 10px; font-size: 12px;">Cancelada</span>
+            {% endif %}
+          </td>
+          <td style="padding: 10px;">
+            {% if r.status == 'confirmed' %}
+              <form method="post" action="{% url 'reservation_cancel' r.id %}" onsubmit="return confirm('¿Cancelar la reserva de {{ r.customer_name }}?')">
+                {% csrf_token %}
+                <button type="submit" style="background:none;border:none;color:#dc3545;cursor:pointer;font-size:12px;padding:0;">Cancelar</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" style="padding: 20px; text-align: center; color: #666;">Sin reservas para este día</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
