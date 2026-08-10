@@ -52,6 +52,13 @@ from gourmet.apps.orders.views import (
     sales_csv,
     split_order,
 )
+from gourmet.apps.tables.views import (
+    table_layout_create,
+    table_layout_delete,
+    table_layout_edit,
+    table_layout_list,
+    table_layout_save_positions,
+)
 
 handler400 = "gourmet.views.bad_request"
 handler403 = "gourmet.views.permission_denied"
@@ -114,5 +121,24 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="pos_update_item_status",
     ),
     path("pos/audit-logs/", audit_logs, name="audit_logs"),
+    path("pos/floor/layouts/", table_layout_list, name="floor_layout_list"),
+    path(
+        "pos/floor/layouts/new/", table_layout_create, name="floor_layout_create"
+    ),
+    path(
+        "pos/floor/layouts/<uuid:layout_id>/",
+        table_layout_edit,
+        name="floor_layout_edit",
+    ),
+    path(
+        "pos/floor/layouts/<uuid:layout_id>/positions/",
+        table_layout_save_positions,
+        name="floor_layout_save_positions",
+    ),
+    path(
+        "pos/floor/layouts/<uuid:layout_id>/delete/",
+        table_layout_delete,
+        name="floor_layout_delete",
+    ),
     path("menu/", menu_public, name="menu_public"),
 ]
