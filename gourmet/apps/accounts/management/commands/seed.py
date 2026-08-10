@@ -12,7 +12,7 @@ from gourmet.apps.menu.models import Category, Product
 from gourmet.apps.orders.models import Order, OrderItem, Payment
 from gourmet.apps.orders.services import OrderService
 from gourmet.apps.reservations.models import Reservation
-from gourmet.apps.tables.models import Table
+from gourmet.apps.tables.models import Table, TableLayout, TableLayoutItem
 
 User = get_user_model()
 
@@ -68,6 +68,28 @@ class Command(BaseCommand):
             )
             tables[code] = table
             self.stdout.write(f"  {'Created' if created else 'Exists'} table: {code}")
+
+        layout, created = TableLayout.objects.get_or_create(
+            name="Salón Principal", defaults={"width": 640, "height": 420}
+        )
+        verb = "Created" if created else "Exists"
+        self.stdout.write(f"  {verb} layout: {layout.name}")
+
+        # Mesa 4 and Barra are left unplaced so the palette (drag-in) is exercised too.
+        layout_items = [
+            ("Mesa 1", 60, 60, "square", 0),
+            ("Mesa 2", 260, 60, "round", 0),
+            ("Mesa 3", 60, 240, "square", 90),
+        ]
+        for code, x, y, shape, rotation in layout_items:
+            _, created = TableLayoutItem.objects.update_or_create(
+                layout=layout, table=tables[code],
+                defaults={
+                    "pos_x": x, "pos_y": y, "shape": shape, "rotation": rotation
+                },
+            )
+            verb = "Placed" if created else "Updated"
+            self.stdout.write(f"  {verb} {code} on layout")
 
         today = timezone.localdate()
         reservations_data = [

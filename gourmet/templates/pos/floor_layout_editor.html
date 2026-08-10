@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head_title %}{{ layout.name }} | Planos | Gourmet{% endblock %}
+{% block content %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+{{ layout_config|json_script:"layout-config" }}
+{{ layout_items_json|json_script:"layout-items" }}
+{{ available_tables_json|json_script:"available-tables" }}
+
+<div style="padding: 20px;" x-data="floorEditor">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+    <h1 style="margin: 0;">{{ layout.name }}</h1>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <a href="{% url 'floor_layout_list' %}" style="color: #6c757d; text-decoration: none; font-size: 13px;">← Volver</a>
+      <button @click="save()" :disabled="saving" style="background: #007bff; color: #fff; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 14px;">
+        <span x-show="!saving">💾 Guardar posiciones</span>
+        <span x-show="saving">Guardando…</span>
+      </button>
+    </div>
+  </div>
+
+  <div x-show="message" x-text="message" style="background: #d4edda; color: #155724; padding: 10px 16px; border-radius: 6px; margin-bottom: 12px; font-size: 14px;"></div>
+
+  <details style="margin-bottom: 16px; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; max-width: 480px;">
+    <summary style="cursor: pointer; font-weight: 600; font-size: 14px; color: #007bff;">⚙ Ajustar tamaño del plano</summary>
+    <form method="post" style="display: flex; gap: 8px; align-items: end; margin-top: 12px; flex-wrap: wrap;">
+      {% csrf_token %}
+      <label style="font-size: 12px; color: #333;">Nombre<br>
+        <input type="text" name="name" value="{{ layout.name }}" required style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+      </label>
+      <label style="font-size: 12px; color: #333;">Ancho<br>
+        <input type="number" name="width" value="{{ layout.width }}" min="100" max="4000" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 80px;">
+      </label>
+      <label style="font-size: 12px; color: #333;">Alto<br>
+        <input type="number" name="height" value="{{ layout.height }}" min="100" max="4000" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 80px;">
+      </label>
+      <button type="submit" style="background: #6c757d; color: #fff; border: none; padding: 7px 14px; border-radius: 4px; cursor: pointer; font-size: 13px;">Guardar tamaño</button>
+    </form>
+  </details>
+
+  <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+    <div>
+      <div style="font-size: 13px; color: #666; margin-bottom: 6px;">Arrastra las mesas al plano. Arrastra dentro del plano para reposicionar.</div>
+      <div
+        @dragover.prevent
+        @drop.prevent="onDrop($event)"
+        :style="boardStyle()"
+      >
+        <template x-for="(item, index) in items" :key="item.table_id">
+          <div
+            draggable="true"
+            @dragstart="startDrag($event, index)"
+            :title="item.code + ' · ' + item.capacity + ' pers.'"
+            :style="itemStyle(item)"
+          >
+            <span x-text="item.code"></span>
+            <span style="font-size:10px;font-weight:400;" x-text="item.capacity + 'p'"></span>
+            <button
+              type="button"
+              @click.stop="rotateItem(index)"
+              title="Rotar"
+              style="position:absolute;top:-10px;right:14px;background:#495057;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;line-height:16px;cursor:pointer;padding:0;"
+            >⟳</button>
+            <button
+              type="button"
+              @click.stop="removeItem(index)"
+              title="Quitar del plano"
+              style="position:absolute;top:-10px;right:-6px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;line-height:16px;cursor:pointer;padding:0;"
+            >×</button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div style="min-width: 180px;">
+      <div style="font-size: 13px; color: #666; margin-bottom: 6px;">Mesas disponibles</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <template x-for="table in availableTables" :key="table.id">
+          <div
+            draggable="true"
+            @dragstart="startDragNew($event, table)"
+            style="background: #fff; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px 12px; cursor: grab; font-size: 13px; display: flex; justify-content: space-between;"
+          >
+            <span x-text="table.code"></span>
+            <span style="color:#999;" x-text="table.capacity + ' pers.'"></span>
+          </div>
+        </template>
+        <div x-show="availableTables.length === 0" style="color: #999; font-size: 12px;">Todas las mesas activas están en el plano.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'floor-layout-editor.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block head_title %}Nuevo plano | Gourmet{% endblock %}
+{% block content %}
+<div style="padding: 20px; max-width: 480px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1 style="margin: 0;">Nuevo plano</h1>
+    <a href="{% url 'floor_layout_list' %}" style="color: #6c757d; text-decoration: none; font-size: 13px;">← Volver</a>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div style="background: #f8d7da; color: #721c24; padding: 10px 16px; border-radius: 6px; margin-bottom: 12px; font-size: 14px;">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" style="display: flex; flex-direction: column; gap: 12px;">
+    {% csrf_token %}
+    <label style="font-size: 13px; color: #333;">
+      Nombre del plano
+      <input type="text" name="name" required placeholder="Ej. Salón principal" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; margin-top: 4px; box-sizing: border-box;">
+    </label>
+    <div style="display: flex; gap: 12px;">
+      <label style="font-size: 13px; color: #333; flex: 1;">
+        Ancho (px)
+        <input type="number" name="width" value="800" min="100" max="4000" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; margin-top: 4px; box-sizing: border-box;">
+      </label>
+      <label style="font-size: 13px; color: #333; flex: 1;">
+        Alto (px)
+        <input type="number" name="height" value="600" min="100" max="4000" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; margin-top: 4px; box-sizing: border-box;">
+      </label>
+    </div>
+    <button type="submit" style="background: #28a745; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; align-self: flex-start;">Crear y editar</button>
+  </form>
+</div>
+{% endblock %}
