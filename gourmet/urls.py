@@ -52,6 +52,11 @@ from gourmet.apps.orders.views import (
     sales_csv,
     split_order,
 )
+from gourmet.apps.reservations.views import (
+    reservation_calendar,
+    reservation_cancel,
+    reservation_list,
+)
 from gourmet.apps.tables.views import (
     table_layout_create,
     table_layout_delete,
@@ -121,6 +126,17 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="pos_update_item_status",
     ),
     path("pos/audit-logs/", audit_logs, name="audit_logs"),
+    path("pos/reservations/", reservation_list, name="reservation_list"),
+    path(
+        "pos/reservations/calendar/",
+        reservation_calendar,
+        name="reservation_calendar",
+    ),
+    path(
+        "pos/reservations/<uuid:reservation_id>/cancel/",
+        reservation_cancel,
+        name="reservation_cancel",
+    ),
     path("pos/floor/layouts/", table_layout_list, name="floor_layout_list"),
     path(
         "pos/floor/layouts/new/", table_layout_create, name="floor_layout_create"

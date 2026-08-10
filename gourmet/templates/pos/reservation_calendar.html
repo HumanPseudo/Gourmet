@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block head_title %}Calendario de reservas | Gourmet{% endblock %}
+{% block content %}
+<div style="padding: 20px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 8px;">
+    <h1 style="margin: 0; text-transform: capitalize;">{{ month_name }}</h1>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <a href="?year={{ prev_year }}&month={{ prev_month }}" style="background: #6c757d; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">← Mes anterior</a>
+      <a href="{% url 'reservation_list' %}?date={{ today|date:'Y-m-d' }}" style="background: #6f42c1; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">Hoy</a>
+      <a href="?year={{ next_year }}&month={{ next_month }}" style="background: #6c757d; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">Mes siguiente →</a>
+    </div>
+  </div>
+
+  <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+    <thead>
+      <tr>
+        <th style="padding: 8px; text-align: center; font-size: 12px; color: #666;">Lun</th>
+        <th style="padding: 8px; text-align: center; font-size: 12px; color: #666;">Mar</th>
+        <th style="padding: 8px; text-align: center; font-size: 12px; color: #666;">Mié</th>
+        <th style="padding: 8px; text-align: center; font-size: 12px; color: #666;">Jue</th>
+        <th style="padding: 8px; text-align: center; font-size: 12px; color: #666;">Vie</th>
+        <th style="padding: 8px; text-align: center; font-size: 12px; color: #666;">Sáb</th>
+        <th style="padding: 8px; text-align: center; font-size: 12px; color: #666;">Dom</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for week in weeks %}
+        <tr>
+          {% for day, count in week %}
+            <td style="border: 1px solid #dee2e6; height: 90px; vertical-align: top; padding: 6px; {% if count == None %}background: #f8f9fa;{% endif %}{% if day == today %}background: #f0e6ff;{% endif %}">
+              <a href="{% url 'reservation_list' %}?date={{ day|date:'Y-m-d' }}" style="text-decoration: none; color: {% if count == None %}#adb5bd{% else %}#333{% endif %}; font-size: 13px; font-weight: {% if day == today %}700{% else %}400{% endif %};">
+                {{ day.day }}
+              </a>
+              {% if count %}
+                <div style="margin-top: 6px; background: #6f42c1; color: #fff; border-radius: 10px; padding: 2px 8px; font-size: 11px; display: inline-block;">
+                  {{ count }} reserva{{ count|pluralize }}
+                </div>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
