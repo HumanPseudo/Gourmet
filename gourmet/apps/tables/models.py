@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from django.conf import settings
 from django.db import models
+
+if TYPE_CHECKING:
+    from gourmet.apps.accounts.models import User
 
 
 class Table(models.Model):
@@ -44,6 +48,15 @@ class Table(models.Model):
         default=Status.AVAILABLE,
         verbose_name="Status",
         db_index=True,
+    )
+
+    assigned_waiter: models.ForeignKey[User | None, User | None] = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_tables",
+        verbose_name="Assigned waiter",
     )
 
     created_at: models.DateTimeField[Any, Any] = models.DateTimeField(

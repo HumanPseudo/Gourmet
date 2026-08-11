@@ -1,0 +1,19 @@
+<tr style="border-bottom: 1px solid #dee2e6;">
+  <td style="padding: 8px; font-weight: 600;">{{ row.table.code }}</td>
+  <td style="padding: 8px;">
+    {% if row.table.assigned_waiter %}{{ row.table.assigned_waiter.name|default:row.table.assigned_waiter.email }}{% else %}Sin asignar{% endif %}
+  </td>
+  <td style="padding: 8px;">
+    <form method="post" style="display: flex; gap: 6px;">
+      {% csrf_token %}
+      <input type="hidden" name="table_id" value="{{ row.table.id }}">
+      <select name="waiter_id" style="padding: 4px 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+        <option value="">Sin asignar</option>
+        {% for w in waiters %}
+          <option value="{{ w.id }}" {% if row.table.assigned_waiter_id == w.id %}selected{% endif %}>{{ w.name|default:w.email }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" style="background: #007bff; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">Asignar</button>
+    </form>
+  </td>
+</tr>
