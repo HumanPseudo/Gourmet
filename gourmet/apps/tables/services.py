@@ -46,6 +46,12 @@ class TableService:
     def delete(table: Table) -> None:
         table.delete()
 
+    @staticmethod
+    def assign_waiter(table: Table, waiter_id: UUID | None) -> Table:
+        table.assigned_waiter_id = waiter_id
+        table.save(update_fields=["assigned_waiter"])
+        return table
+
 
 class TableLayoutService:
     @staticmethod

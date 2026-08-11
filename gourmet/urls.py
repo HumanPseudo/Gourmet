@@ -35,6 +35,7 @@ from gourmet.apps.orders.views import (
     close_report,
     create_order,
     dashboard,
+    floor_view,
     kitchen,
     menu_public,
     order_detail,
@@ -149,6 +150,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
         reservation_cancel,
         name="reservation_cancel",
     ),
+    path("pos/floor/", floor_view, name="floor_view"),
     path("pos/floor/layouts/", table_layout_list, name="floor_layout_list"),
     path(
         "pos/floor/layouts/new/", table_layout_create, name="floor_layout_create"

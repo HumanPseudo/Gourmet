@@ -1,0 +1,18 @@
+{% if row.order_id %}
+  <a
+    href="{% url 'order_detail' row.order_id %}"
+    style="{% if positioned %}position:absolute;left:{{ row.pos_x }}px;top:{{ row.pos_y }}px;{% else %}display:inline-flex;{% endif %}width:64px;height:64px;{% if row.shape == 'round' %}border-radius:50%;{% else %}border-radius:8px;{% endif %}{% if row.rotation %}transform:rotate({{ row.rotation }}deg);{% endif %}flex-direction:column;align-items:center;justify-content:center;text-decoration:none;color:#fff;font-weight:700;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.3);background:#dc3545;"
+    title="{{ row.table.code }} · {{ row.table.capacity }} pers. · orden abierta{% if row.table.assigned_waiter %} · {{ row.table.assigned_waiter.name|default:row.table.assigned_waiter.email }}{% endif %}"
+  >
+    <span>{{ row.table.code }}</span>
+    <span style="font-size:10px;font-weight:400;">{{ row.table.capacity }}p</span>
+  </a>
+{% else %}
+  <div
+    style="{% if positioned %}position:absolute;left:{{ row.pos_x }}px;top:{{ row.pos_y }}px;{% else %}display:inline-flex;{% endif %}width:64px;height:64px;{% if row.shape == 'round' %}border-radius:50%;{% else %}border-radius:8px;{% endif %}{% if row.rotation %}transform:rotate({{ row.rotation }}deg);{% endif %}flex-direction:column;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.3);background:{% if row.table.status == 'reserved' %}#007bff{% elif row.table.status == 'available' %}#28a745{% else %}#6c757d{% endif %};"
+    title="{{ row.table.code }} · {{ row.table.capacity }} pers.{% if row.table.assigned_waiter %} · {{ row.table.assigned_waiter.name|default:row.table.assigned_waiter.email }}{% endif %}"
+  >
+    <span>{{ row.table.code }}</span>
+    <span style="font-size:10px;font-weight:400;">{{ row.table.capacity }}p</span>
+  </div>
+{% endif %}

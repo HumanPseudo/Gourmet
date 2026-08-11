@@ -13,8 +13,10 @@ from django.views.decorators.http import require_POST
 
 from gourmet.apps.accounts.audit import log_audit
 from gourmet.apps.accounts.auth import role_required
+from gourmet.apps.accounts.models import User
 from gourmet.apps.menu.models import Product
 from gourmet.apps.tables.models import Table, TableLayout
+from gourmet.apps.tables.services import TableService
 
 from .models import DailyClose, Order, OrderItem
 from .services import OrderService
@@ -262,6 +264,70 @@ def pos_floor_status(request):
             "unplaced": unplaced,
             "no_table_orders": no_table_orders,
         }
+    )
+
+
+@role_required("waiter", "admin")
+def floor_view(request):
+    if request.method == "POST":
+        table = get_object_or_404(Table, pk=request.POST.get("table_id"))
+        TableService.assign_waiter(table, request.POST.get("waiter_id") or None)
+        log_audit(request, "table.waiter_assigned", table.code)
+        return redirect("floor_view")
+
+    layout = (
+        TableLayout.objects.filter(is_active=True)
+        .prefetch_related("items__table__assigned_waiter")
+        .first()
+    )
+    open_order_by_table = dict(
+        Order.objects.filter(
+            status=Order.Status.OPEN, table_id__isnull=False
+        ).values_list("table_id", "id")
+    )
+
+    def _row(table: Table, pos_x=None, pos_y=None, shape=None, rotation=None):
+        return {
+            "table": table,
+            "pos_x": pos_x,
+            "pos_y": pos_y,
+            "shape": shape,
+            "rotation": rotation,
+            "order_id": open_order_by_table.get(table.pk),
+        }
+
+    placed_ids: set = set()
+    positioned = []
+    layout_size = None
+    if layout:
+        layout_size = {"width": layout.width, "height": layout.height}
+        for item in layout.items.all():
+            placed_ids.add(item.table_id)
+            positioned.append(
+                _row(item.table, item.pos_x, item.pos_y, item.shape, item.rotation)
+            )
+
+    unplaced = [
+        _row(t)
+        for t in Table.objects.filter(is_active=True)
+        .exclude(pk__in=placed_ids)
+        .select_related("assigned_waiter")
+        .order_by("code")
+    ]
+
+    waiters = User.objects.filter(role__name="waiter", is_active=True).order_by(
+        "name"
+    )
+
+    return render(
+        request,
+        "pos/floor_view.html",
+        {
+            "layout_size": layout_size,
+            "positioned": positioned,
+            "unplaced": unplaced,
+            "waiters": waiters,
+        },
     )
 
 

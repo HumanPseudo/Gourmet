@@ -6,9 +6,9 @@ from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
-from gourmet.apps.accounts.models import AuthToken, User
+from gourmet.apps.accounts.models import AuthToken, Role, User
 from gourmet.apps.tables.models import Table, TableLayout, TableLayoutItem
-from gourmet.apps.tables.services import TableLayoutService
+from gourmet.apps.tables.services import TableLayoutService, TableService
 
 
 class TableAPITests(TestCase):
@@ -215,3 +215,21 @@ class TableLayoutViewTests(TestCase):
         )
         assert response.status_code == 302
         assert not TableLayout.objects.filter(pk=self.layout.pk).exists()
+
+
+class AssignWaiterTests(TestCase):
+    def setUp(self) -> None:
+        self.role = Role.objects.create(name="waiter")
+        self.waiter = User.objects.create(
+            email="waiter@test.com", name="Ana", role=self.role, is_staff=True
+        )
+        self.table = Table.objects.create(code="AW1", capacity=4)
+
+    def test_assign_waiter(self) -> None:
+        updated = TableService.assign_waiter(self.table, self.waiter.pk)
+        self.assertEqual(updated.assigned_waiter_id, self.waiter.pk)
+
+    def test_unassign_waiter(self) -> None:
+        TableService.assign_waiter(self.table, self.waiter.pk)
+        updated = TableService.assign_waiter(self.table, None)
+        self.assertIsNone(updated.assigned_waiter_id)

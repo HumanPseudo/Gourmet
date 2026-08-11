@@ -7,7 +7,7 @@ from decimal import Decimal
 from django.test import TestCase
 from django.urls import reverse
 
-from gourmet.apps.accounts.models import AuthToken, User
+from gourmet.apps.accounts.models import AuthToken, Role, User
 from gourmet.apps.menu.models import Category, Product
 from gourmet.apps.tables.models import Table, TableLayout, TableLayoutItem
 
@@ -682,3 +682,50 @@ class PosFloorIntegrationViewTests(TestCase):
             content_type="application/json",
         )
         assert response.status_code == 400
+
+
+class FloorViewTests(TestCase):
+    def setUp(self) -> None:
+        self.admin = User.objects.create_superuser(
+            email="floor-view-admin@test.com",
+            password="admin1234",
+            name="Admin",
+        )
+        self.client.force_login(self.admin)
+        self.table1 = Table.objects.create(code="FV1", capacity=4)
+        self.table2 = Table.objects.create(code="FV2", capacity=2)
+        self.role = Role.objects.create(name="waiter")
+        self.waiter = User.objects.create(
+            email="waiter-fv@test.com", name="Ana", role=self.role, is_staff=True
+        )
+
+    def test_floor_view_renders(self) -> None:
+        response = self.client.get(reverse("floor_view"))
+        assert response.status_code == 200
+        assert b"FV1" in response.content
+        assert b"FV2" in response.content
+
+    def test_floor_view_shows_order_link_for_occupied_table(self) -> None:
+        order = OrderService.create(table_id=self.table1.pk, notes="")
+        response = self.client.get(reverse("floor_view"))
+        assert f"/pos/orders/{order.pk}/".encode() in response.content
+
+    def test_assign_waiter_via_view(self) -> None:
+        response = self.client.post(
+            reverse("floor_view"),
+            {"table_id": str(self.table1.pk), "waiter_id": str(self.waiter.pk)},
+        )
+        assert response.status_code == 302
+        self.table1.refresh_from_db()
+        assert self.table1.assigned_waiter_id == self.waiter.pk
+
+    def test_unassign_waiter_via_view(self) -> None:
+        self.table1.assigned_waiter = self.waiter
+        self.table1.save()
+        response = self.client.post(
+            reverse("floor_view"),
+            {"table_id": str(self.table1.pk), "waiter_id": ""},
+        )
+        assert response.status_code == 302
+        self.table1.refresh_from_db()
+        assert self.table1.assigned_waiter_id is None
