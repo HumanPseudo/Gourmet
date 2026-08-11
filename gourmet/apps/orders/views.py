@@ -14,10 +14,39 @@ from django.views.decorators.http import require_POST
 from gourmet.apps.accounts.audit import log_audit
 from gourmet.apps.accounts.auth import role_required
 from gourmet.apps.menu.models import Product
-from gourmet.apps.tables.models import Table
+from gourmet.apps.tables.models import Table, TableLayout
 
 from .models import DailyClose, Order, OrderItem
 from .services import OrderService
+
+
+def _order_json(order: Order) -> dict:
+    total_paid = sum((p.amount for p in order.payments.all()), Decimal("0.00"))
+    items = order.items.exclude(status=OrderItem.Status.CANCELLED)
+    tax_total = Decimal("0.00")
+    for i in items:
+        tax_total += i.product_price * i.quantity * i.tax_rate
+    return {
+        "id": str(order.pk),
+        "table_id": str(order.table_id) if order.table_id else None,
+        "table_code": order.table.code if order.table else None,
+        "customer_name": order.customer_name,
+        "status": order.status,
+        "subtotal": str(order.subtotal),
+        "total": str(order.total),
+        "tax_total": str(tax_total.quantize(Decimal("0.01"))),
+        "total_paid": str(total_paid),
+        "items": [
+            {
+                "id": str(i.pk),
+                "name": i.product_name,
+                "price": str(i.product_price),
+                "quantity": i.quantity,
+                "status": i.status,
+            }
+            for i in items
+        ],
+    }
 
 
 def _mins(delta: timedelta) -> int:
@@ -74,20 +103,7 @@ def pos_create_order(request):
             )
         if data.get("checkout", True):
             order = OrderService.checkout(order.pk)
-        total_paid = sum(p.amount for p in order.payments.all())
-        tax_total = sum(
-            (i.product_price * i.quantity * i.tax_rate)
-            for i in order.items.exclude(status=OrderItem.Status.CANCELLED)
-        )
-        return JsonResponse(
-            {
-                "id": str(order.pk),
-                "subtotal": str(order.subtotal),
-                "total": str(order.total),
-                "tax_total": str(tax_total.quantize(Decimal("0.01"))),
-                "total_paid": str(total_paid),
-            }
-        )
+        return JsonResponse(_order_json(order))
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
@@ -133,20 +149,7 @@ def pos_add_items(request, order_id):
         )
     log_audit(request, "order.items_added", f"Order {str(order_id)[:8]}")
     order = OrderService.checkout(order.pk)
-    total_paid = sum(p.amount for p in order.payments.all())
-    tax_total = sum(
-        (i.product_price * i.quantity * i.tax_rate)
-        for i in order.items.exclude(status=OrderItem.Status.CANCELLED)
-    )
-    return JsonResponse(
-        {
-            "id": str(order.pk),
-            "subtotal": str(order.subtotal),
-            "total": str(order.total),
-            "tax_total": str(tax_total.quantize(Decimal("0.01"))),
-            "total_paid": str(total_paid),
-        }
-    )
+    return JsonResponse(_order_json(order))
 
 
 @role_required("waiter", "admin")
@@ -158,6 +161,108 @@ def pos_close(request, order_id):
         return JsonResponse({"status": "closed"})
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=400)
+
+
+@role_required("waiter", "admin")
+def pos_order_json(request, order_id):
+    order = get_object_or_404(
+        Order.objects.select_related("table").prefetch_related(
+            "items", "payments"
+        ),
+        pk=order_id,
+    )
+    return JsonResponse(_order_json(order))
+
+
+@role_required("waiter", "admin")
+@require_POST
+def pos_remove_item(request, order_id, item_id):
+    try:
+        OrderService.remove_item(order_id, item_id)
+        order = OrderService.checkout(order_id)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    log_audit(request, "order.item_removed", f"Order {str(order_id)[:8]}")
+    return JsonResponse(_order_json(order))
+
+
+@role_required("waiter", "admin")
+@require_POST
+def pos_set_table(request, order_id):
+    data = json.loads(request.body)
+    try:
+        order = OrderService.set_table(order_id, data.get("table_id") or None)
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    log_audit(request, "order.table_changed", f"Order {str(order_id)[:8]}")
+    return JsonResponse(_order_json(order))
+
+
+@role_required("waiter", "admin")
+def pos_floor_status(request):
+    layout = TableLayout.objects.filter(is_active=True).prefetch_related(
+        "items__table"
+    ).first()
+    open_order_by_table = dict(
+        Order.objects.filter(
+            status=Order.Status.OPEN, table_id__isnull=False
+        ).values_list("table_id", "id")
+    )
+
+    def _table_json(table, pos_x=None, pos_y=None, shape=None, rotation=None):
+        order_id = open_order_by_table.get(table.id)
+        return {
+            "table_id": str(table.id),
+            "code": table.code,
+            "capacity": table.capacity,
+            "status": table.status,
+            "order_id": str(order_id) if order_id else None,
+            "pos_x": pos_x,
+            "pos_y": pos_y,
+            "shape": shape,
+            "rotation": rotation,
+        }
+
+    placed_ids: set = set()
+    items = []
+    layout_json = None
+    if layout:
+        layout_json = {"width": layout.width, "height": layout.height}
+        for item in layout.items.all():
+            placed_ids.add(item.table_id)
+            items.append(
+                _table_json(
+                    item.table, item.pos_x, item.pos_y, item.shape, item.rotation
+                )
+            )
+
+    unplaced = [
+        _table_json(t)
+        for t in Table.objects.filter(is_active=True).exclude(
+            pk__in=placed_ids
+        ).order_by("code")
+    ]
+
+    no_table_orders = [
+        {
+            "order_id": str(o.pk),
+            "customer_name": o.customer_name,
+            "item_count": o.items.exclude(status=OrderItem.Status.CANCELLED).count(),
+            "total": str(o.total),
+        }
+        for o in Order.objects.filter(
+            status=Order.Status.OPEN, table_id__isnull=True
+        ).order_by("created_at")
+    ]
+
+    return JsonResponse(
+        {
+            "layout": layout_json,
+            "items": items,
+            "unplaced": unplaced,
+            "no_table_orders": no_table_orders,
+        }
+    )
 
 
 @role_required("waiter", "kitchen", "admin")

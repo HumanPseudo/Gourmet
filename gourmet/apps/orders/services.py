@@ -256,6 +256,30 @@ class OrderService:
         return OrderService.get(order.pk)
 
     @staticmethod
+    @transaction.atomic
+    def set_table(order_id: UUID, table_id: UUID | None) -> Order:
+        order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
+        if order.table_id == table_id:
+            return order
+        if table_id and (
+            Order.objects.filter(table_id=table_id, status=Order.Status.OPEN)
+            .exclude(pk=order_id)
+            .exists()
+        ):
+            raise ValueError("La mesa ya tiene una orden abierta")
+        if order.table_id:
+            Table.objects.filter(pk=order.table_id).update(
+                status=Table.Status.AVAILABLE
+            )
+        order.table_id = table_id
+        order.save(update_fields=["table_id"])
+        if table_id:
+            Table.objects.filter(pk=table_id, is_active=True).update(
+                status=Table.Status.OCCUPIED
+            )
+        return OrderService.get(order.pk)
+
+    @staticmethod
     def _deduct_inventory(product: Product, quantity: int) -> None:
         recipes = ProductRecipe.objects.filter(
             product=product,

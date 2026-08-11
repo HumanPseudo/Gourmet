@@ -5,10 +5,11 @@ import uuid
 from decimal import Decimal
 
 from django.test import TestCase
+from django.urls import reverse
 
 from gourmet.apps.accounts.models import AuthToken, User
 from gourmet.apps.menu.models import Category, Product
-from gourmet.apps.tables.models import Table
+from gourmet.apps.tables.models import Table, TableLayout, TableLayoutItem
 
 from .models import BillSplit, BillSplitItem, Order, OrderItem, Payment
 from .services import OrderService
@@ -544,3 +545,140 @@ class BillSplitTests(TestCase):
         result = self._delete(f"/api/orders/{order.pk}/splits/{split_id}")
         assert result["status"] == 200
         assert not BillSplit.objects.filter(pk=split_id).exists()
+
+
+class SetTableServiceTests(TestCase):
+    def setUp(self) -> None:
+        self.table1 = Table.objects.create(code="ST1", capacity=4)
+        self.table2 = Table.objects.create(code="ST2", capacity=4)
+
+    def test_set_table_assigns_and_marks_occupied(self) -> None:
+        order = OrderService.create(table_id=None, notes="")
+        updated = OrderService.set_table(order.pk, self.table1.pk)
+        self.assertEqual(updated.table_id, self.table1.pk)
+        self.table1.refresh_from_db()
+        self.assertEqual(self.table1.status, Table.Status.OCCUPIED)
+
+    def test_set_table_frees_previous_table(self) -> None:
+        order = OrderService.create(table_id=self.table1.pk, notes="")
+        OrderService.set_table(order.pk, self.table2.pk)
+        self.table1.refresh_from_db()
+        self.table2.refresh_from_db()
+        self.assertEqual(self.table1.status, Table.Status.AVAILABLE)
+        self.assertEqual(self.table2.status, Table.Status.OCCUPIED)
+
+    def test_set_table_rejects_table_with_other_open_order(self) -> None:
+        OrderService.create(table_id=self.table1.pk, notes="")
+        order2 = OrderService.create(table_id=None, notes="")
+        with self.assertRaises(ValueError):
+            OrderService.set_table(order2.pk, self.table1.pk)
+
+    def test_set_table_to_none_frees_table(self) -> None:
+        order = OrderService.create(table_id=self.table1.pk, notes="")
+        updated = OrderService.set_table(order.pk, None)
+        self.assertIsNone(updated.table_id)
+        self.table1.refresh_from_db()
+        self.assertEqual(self.table1.status, Table.Status.AVAILABLE)
+
+
+class PosFloorIntegrationViewTests(TestCase):
+    def setUp(self) -> None:
+        self.admin = User.objects.create_superuser(
+            email="pos-floor-admin@test.com",
+            password="admin1234",
+            name="Admin",
+        )
+        self.client.force_login(self.admin)
+        self.cat = Category.objects.create(name="Food")
+        self.product = Product.objects.create(
+            category=self.cat, name="Pizza", price=Decimal("10.00"),
+        )
+        self.table1 = Table.objects.create(code="PF1", capacity=4)
+        self.table2 = Table.objects.create(code="PF2", capacity=2)
+
+    def test_floor_status_without_layout(self) -> None:
+        response = self.client.get(reverse("pos_floor_status"))
+        assert response.status_code == 200
+        data = response.json()
+        assert data["layout"] is None
+        assert data["items"] == []
+        codes = {t["code"] for t in data["unplaced"]}
+        assert {"PF1", "PF2"} <= codes
+
+    def test_floor_status_lists_orders_without_table(self) -> None:
+        order = OrderService.create(
+            table_id=None, notes="", customer_name="Sin mesa"
+        )
+        OrderService.add_item(order.pk, self.product.pk, 1, "")
+        OrderService.checkout(order.pk)
+
+        response = self.client.get(reverse("pos_floor_status"))
+        data = response.json()
+        no_table = data["no_table_orders"]
+        assert len(no_table) == 1
+        assert no_table[0]["order_id"] == str(order.pk)
+        assert no_table[0]["customer_name"] == "Sin mesa"
+        assert no_table[0]["item_count"] == 1
+
+    def test_floor_status_with_layout_and_open_order(self) -> None:
+        layout = TableLayout.objects.create(name="Salón", width=400, height=300)
+        TableLayoutItem.objects.create(
+            layout=layout, table=self.table1, pos_x=10, pos_y=10
+        )
+        order = OrderService.create(table_id=self.table1.pk, notes="")
+
+        response = self.client.get(reverse("pos_floor_status"))
+        data = response.json()
+        assert data["layout"] == {"width": 400, "height": 300}
+        item = next(i for i in data["items"] if i["table_id"] == str(self.table1.pk))
+        assert item["status"] == "occupied"
+        assert item["order_id"] == str(order.pk)
+        unplaced_codes = {t["code"] for t in data["unplaced"]}
+        assert unplaced_codes == {"PF2"}
+
+    def test_order_json_returns_items(self) -> None:
+        order = OrderService.create(table_id=self.table1.pk, notes="")
+        OrderService.add_item(order.pk, self.product.pk, 2, "")
+        OrderService.checkout(order.pk)
+
+        response = self.client.get(reverse("pos_order_json", args=[order.pk]))
+        assert response.status_code == 200
+        data = response.json()
+        assert data["table_id"] == str(self.table1.pk)
+        assert len(data["items"]) == 1
+        assert data["items"][0]["quantity"] == 2
+
+    def test_remove_item_updates_totals(self) -> None:
+        order = OrderService.create(table_id=None, notes="")
+        item = OrderService.add_item(order.pk, self.product.pk, 2, "")
+        OrderService.checkout(order.pk)
+
+        response = self.client.post(
+            reverse("pos_remove_item", args=[order.pk, item.pk])
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["items"] == []
+        assert data["subtotal"] == "0.00"
+
+    def test_set_table_endpoint(self) -> None:
+        order = OrderService.create(table_id=None, notes="")
+        response = self.client.post(
+            reverse("pos_set_table", args=[order.pk]),
+            data=json.dumps({"table_id": str(self.table1.pk)}),
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        assert response.json()["table_id"] == str(self.table1.pk)
+        self.table1.refresh_from_db()
+        assert self.table1.status == Table.Status.OCCUPIED
+
+    def test_set_table_endpoint_conflict(self) -> None:
+        OrderService.create(table_id=self.table1.pk, notes="")
+        order2 = OrderService.create(table_id=None, notes="")
+        response = self.client.post(
+            reverse("pos_set_table", args=[order2.pk]),
+            data=json.dumps({"table_id": str(self.table1.pk)}),
+            content_type="application/json",
+        )
+        assert response.status_code == 400
