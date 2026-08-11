@@ -54,7 +54,7 @@ document.addEventListener('alpine:init', () => {
     _lineTotal(item) { return item.price * item.qty; },
 
     _formatPeso(n) {
-      const parts = n.toFixed(2).split('.');
+      const parts = Number(n).toFixed(2).split('.');
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       return '$ ' + parts.join(',');
     },
