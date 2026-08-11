@@ -81,6 +81,22 @@
         </div>
       </template>
       <div x-show="!floorLayout && floorUnplaced.length===0" style="color:#999;font-size:13px;">No hay mesas activas.</div>
+      <template x-if="noTableOrders.length">
+        <div style="margin-top:16px;border-top:1px solid #eee;padding-top:12px;">
+          <div style="font-size:12px;color:#666;margin-bottom:6px;">📋 Órdenes sin mesa</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <template x-for="o in noTableOrders" :key="o.order_id">
+              <button
+                @click="selectNoTableOrder(o)"
+                :style="'text-align:left;padding:8px 12px;border:1px solid #dee2e6;border-radius:6px;cursor:pointer;font-size:13px;background:' + (o.order_id===orderId ? '#333' : '#fff') + ';color:' + (o.order_id===orderId ? '#fff' : '#333') + ';'"
+              >
+                <span x-text="'#' + o.order_id.slice(0,8)"></span>
+                <span x-text="(o.customer_name ? ' — ' + o.customer_name : '') + ' · ' + o.item_count + ' items · ' + _formatPeso(o.total)"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </template>
     </div>
   </div>
 

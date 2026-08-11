@@ -243,8 +243,25 @@ def pos_floor_status(request):
         ).order_by("code")
     ]
 
+    no_table_orders = [
+        {
+            "order_id": str(o.pk),
+            "customer_name": o.customer_name,
+            "item_count": o.items.exclude(status=OrderItem.Status.CANCELLED).count(),
+            "total": str(o.total),
+        }
+        for o in Order.objects.filter(
+            status=Order.Status.OPEN, table_id__isnull=True
+        ).order_by("created_at")
+    ]
+
     return JsonResponse(
-        {"layout": layout_json, "items": items, "unplaced": unplaced}
+        {
+            "layout": layout_json,
+            "items": items,
+            "unplaced": unplaced,
+            "no_table_orders": no_table_orders,
+        }
     )
 
 

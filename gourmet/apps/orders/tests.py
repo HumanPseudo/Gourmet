@@ -605,6 +605,21 @@ class PosFloorIntegrationViewTests(TestCase):
         codes = {t["code"] for t in data["unplaced"]}
         assert {"PF1", "PF2"} <= codes
 
+    def test_floor_status_lists_orders_without_table(self) -> None:
+        order = OrderService.create(
+            table_id=None, notes="", customer_name="Sin mesa"
+        )
+        OrderService.add_item(order.pk, self.product.pk, 1, "")
+        OrderService.checkout(order.pk)
+
+        response = self.client.get(reverse("pos_floor_status"))
+        data = response.json()
+        no_table = data["no_table_orders"]
+        assert len(no_table) == 1
+        assert no_table[0]["order_id"] == str(order.pk)
+        assert no_table[0]["customer_name"] == "Sin mesa"
+        assert no_table[0]["item_count"] == 1
+
     def test_floor_status_with_layout_and_open_order(self) -> None:
         layout = TableLayout.objects.create(name="Salón", width=400, height=300)
         TableLayoutItem.objects.create(

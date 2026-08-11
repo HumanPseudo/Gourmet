@@ -16,7 +16,7 @@ document.addEventListener('alpine:init', () => {
     createOrderError: '', closeError: '', closed: false, tipAmount: 0, showPay: false,
     outOfStock: [], lowStock: [],
     loadError: '',
-    showFloor: false, floorLayout: null, floorItems: [], floorUnplaced: [],
+    showFloor: false, floorLayout: null, floorItems: [], floorUnplaced: [], noTableOrders: [],
     methods: [
       { value: 'cash', label: '\u{1F4B5} Efectivo', color: '#28a745' },
       { value: 'card', label: '\u{1F4B3} Tarjeta', color: '#007bff' },
@@ -83,7 +83,15 @@ document.addEventListener('alpine:init', () => {
         this.floorLayout = data.layout;
         this.floorItems = data.items || [];
         this.floorUnplaced = data.unplaced || [];
+        this.noTableOrders = data.no_table_orders || [];
       } catch (_) {}
+    },
+
+    async selectNoTableOrder(o) {
+      if (o.order_id === this.orderId) { this.showFloor = false; return; }
+      if ((this.cart.length || this.orderId) && !confirm('¿Cambiar a esta orden? Perderás la selección actual.')) return;
+      await this.loadOrder(o.order_id);
+      this.showFloor = false;
     },
 
     async selectTable(t) {
