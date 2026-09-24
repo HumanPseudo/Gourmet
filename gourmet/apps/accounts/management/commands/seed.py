@@ -21,7 +21,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
-            "--demo", action="store_true",
+            "--demo",
+            action="store_true",
             help="Create sample orders, payments, and kitchen items",
         )
 
@@ -35,7 +36,7 @@ class Command(BaseCommand):
         users_data = [
             ("waiter@example.com", "waiter1", "Mesero Uno", "waiter"),
             ("kitchen@example.com", "kitchen1", "Cocinero Uno", "kitchen"),
-            ("admin@example.com", "admin", "Admin", "admin"),
+            ("admin@example.com", "admin", "Administrador", "admin"),
         ]
         for email, password, name, role_name in users_data:
             user, created = User.objects.get_or_create(
@@ -69,23 +70,23 @@ class Command(BaseCommand):
         cat_bebidas, _ = Category.objects.get_or_create(
             name="Bebidas", defaults={"sort_order": 1}
         )
-        if _:
-            self.stdout.write(f"  Created category: {cat_bebidas.name}")
-
         cat_comidas, _ = Category.objects.get_or_create(
             name="Comidas", defaults={"sort_order": 2}
         )
-        if _:
-            self.stdout.write(f"  Created category: {cat_comidas.name}")
+        cat_postres, _ = Category.objects.get_or_create(
+            name="Postres", defaults={"sort_order": 3}
+        )
 
         products_data = [
-            (cat_bebidas, "Coca Cola", 2.50, "IVA_19"),
-            (cat_bebidas, "Agua Mineral", 1.50, "IVA_19"),
-            (cat_bebidas, "Jugo Natural", 3.00, "EXENTO"),
-            (cat_comidas, "Hamburguesa", 8.50, "INC_8"),
-            (cat_comidas, "Pizza", 10.00, "INC_8"),
-            (cat_comidas, "Ensalada", 6.50, "EXENTO"),
-            (cat_comidas, "Papas Fritas", 4.00, "INC_8"),
+            (cat_bebidas, "Agua Mineral", 2500, "IVA_19"),
+            (cat_bebidas, "Jugo de Lulo", 4000, "EXENTO"),
+            (cat_bebidas, "Limonada", 3500, "EXENTO"),
+            (cat_comidas, "Hamburguesa", 8500, "INC_8"),
+            (cat_comidas, "Pizza", 10000, "INC_8"),
+            (cat_comidas, "Bandeja Paisa", 18000, "INC_8"),
+            (cat_comidas, "Arepa con Queso", 3000, "EXENTO"),
+            (cat_comidas, "Empanadas", 2000, "INC_8"),
+            (cat_postres, "Postre de Tres Leches", 5000, "IVA_19"),
         ]
 
         for category, name, price, tax_type in products_data:
@@ -116,9 +117,7 @@ class Command(BaseCommand):
                         f"  Exists product: {name} (${price}, {tax_type})"
                     )
             else:
-                self.stdout.write(
-                    f"  Created product: {name} (${price}, {tax_type})"
-                )
+                self.stdout.write(f"  Created product: {name} (${price}, {tax_type})")
 
         if options["demo"]:
             self._create_demo_data()
@@ -134,12 +133,15 @@ class Command(BaseCommand):
         prods = {p.name: p for p in Product.objects.filter(is_available=True)}
 
         def make(
-            table_code: str | None, notes: str, items: list,
+            table_code: str | None,
+            notes: str,
+            items: list,
             paid: bool = False,
         ) -> Order:
             t = tables.get(table_code or "")
             order = OrderService.create(
-                table_id=t.pk if t else None, notes=notes,
+                table_id=t.pk if t else None,
+                notes=notes,
             )
             for name, qty in items:
                 p = prods.get(name)
@@ -154,16 +156,18 @@ class Command(BaseCommand):
         now = timezone.now()
 
         o1 = make(
-            "Mesa 1", "Sin cebolla",
-            [("Hamburguesa", 2), ("Coca Cola", 2), ("Papas Fritas", 1)],
+            "Mesa 1",
+            "Sin cebolla",
+            [("Hamburguesa", 2), ("Papas Fritas", 1), ("Agua Mineral", 2)],
             paid=True,
         )
         Order.objects.filter(pk=o1.pk).update(created_at=now - timedelta(hours=3))
         o2 = make("Mesa 2", "", [("Pizza", 1), ("Agua Mineral", 2)], paid=True)
         Order.objects.filter(pk=o2.pk).update(created_at=now - timedelta(hours=2))
         o3 = make(
-            "Mesa 3", "Cumpleaños",
-            [("Pizza", 3), ("Coca Cola", 4), ("Jugo Natural", 2)],
+            "Mesa 3",
+            "Cumpleaños",
+            [("Pizza", 3), ("Jugo de Lulo", 2), ("Limonada", 2)],
             paid=True,
         )
         Order.objects.filter(pk=o3.pk).update(
@@ -171,13 +175,14 @@ class Command(BaseCommand):
         )
 
         o4 = make(
-            "Mesa 4", "",
-            [("Hamburguesa", 3), ("Papas Fritas", 2), ("Coca Cola", 3)],
+            "Mesa 4",
+            "",
+            [("Hamburguesa", 3), ("Papas Fritas", 2)],
         )
         Order.objects.filter(pk=o4.pk).update(created_at=now - timedelta(minutes=45))
-        o5 = make("Barra", "Para llevar", [("Ensalada", 1), ("Jugo Natural", 1)])
+        o5 = make("Barra", "Para llevar", [("Arepa con Queso", 1), ("Jugo de Lulo", 1)])
         Order.objects.filter(pk=o5.pk).update(created_at=now - timedelta(minutes=15))
-        o6 = make(None, "Domicilio", [("Pizza", 2), ("Coca Cola", 2)])
+        o6 = make(None, "Domicilio", [("Empanadas", 2), ("Pizza", 2)])
         Order.objects.filter(pk=o6.pk).update(created_at=now - timedelta(minutes=5))
 
         items_m4 = list(OrderItem.objects.filter(order=o4).order_by("created_at"))
@@ -186,7 +191,7 @@ class Command(BaseCommand):
             item.save()
         OrderItem.objects.filter(order=o5).update(status="preparing")
 
-        OrderService.pay(o4.pk, "card", Decimal("20.00"), "")
+        OrderService.pay(o4.pk, "card", Decimal("20000"), "")
 
         self.stdout.write(
             f"  Demo: {Order.objects.count()} orders,"

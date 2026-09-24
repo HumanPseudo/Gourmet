@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import builtins
 import hashlib
 import logging
 from collections import defaultdict
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from django.db import transaction
@@ -54,24 +56,27 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def create(
-        table_id: UUID | None, notes: str,
-        customer_name: str = "", discount_amount: Decimal | None = None,
+        table_id: UUID | None = None,
+        notes: str = "",
+        customer_name: str = "",
+        discount_amount: Decimal = Decimal("0.00"),
+        source: str = Order.Source.POS,
     ) -> Order:
-        if table_id:
-            Table.objects.filter(pk=table_id, is_active=True).update(
-                status=Table.Status.OCCUPIED
-            )
         return Order.objects.create(
             table_id=table_id,
-            notes=notes,
             customer_name=customer_name,
-            discount_amount=discount_amount or Decimal("0.00"),
+            notes=notes,
+            discount_amount=discount_amount,
+            source=source,
         )
 
     @staticmethod
     @transaction.atomic
     def add_item(
-        order_id: UUID, product_id: UUID, quantity: int, notes: str,
+        order_id: UUID,
+        product_id: UUID,
+        quantity: int,
+        notes: str,
         discount_percent: Decimal | None = None,
     ) -> OrderItem:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
@@ -91,7 +96,10 @@ class OrderService:
 
     @staticmethod
     def update_item(
-        order_id: UUID, item_id: UUID, quantity: int | None, notes: str | None,
+        order_id: UUID,
+        item_id: UUID,
+        quantity: int | None,
+        notes: str | None,
         status: str | None,
     ) -> OrderItem:
         item = get_object_or_404(
@@ -145,14 +153,20 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def pay(
-        order_id: UUID, method: str, amount: Decimal, reference: str,
+        order_id: UUID,
+        method: str,
+        amount: Decimal,
+        reference: str,
         tip: Decimal | None = None,
     ) -> Payment:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
         if amount <= 0:
             raise ValueError("Payment amount must be positive")
         payment = Payment.objects.create(
-            order=order, method=method, amount=amount, reference=reference,
+            order=order,
+            method=method,
+            amount=amount,
+            reference=reference,
             tip=tip or Decimal("0.00"),
         )
         return payment
@@ -162,7 +176,9 @@ class OrderService:
     def close(order_id: UUID) -> Order:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
         if order.table_id:
-            Table.objects.filter(pk=order.table_id).update(status=Table.Status.AVAILABLE)
+            Table.objects.filter(pk=order.table_id).update(
+                status=Table.Status.AVAILABLE
+            )
         order.status = Order.Status.CLOSED
         order.closed_at = timezone.now()
         order.save(update_fields=["status", "closed_at"])
@@ -195,14 +211,17 @@ class OrderService:
         order.closed_at = timezone.now()
         order.save(update_fields=["status", "closed_at"])
         items = OrderItem.objects.filter(
-            order=order, status=OrderItem.Status.PENDING,
+            order=order,
+            status=OrderItem.Status.PENDING,
         )
         for item in items:
             if item.product_id:
                 OrderService._reverse_inventory(item.product_id, item.quantity)
         items.update(status=OrderItem.Status.CANCELLED)
         if order.table_id:
-            Table.objects.filter(pk=order.table_id).update(status=Table.Status.AVAILABLE)
+            Table.objects.filter(pk=order.table_id).update(
+                status=Table.Status.AVAILABLE
+            )
         return OrderService.get(order.pk)
 
     @staticmethod
@@ -220,7 +239,9 @@ class OrderService:
     @transaction.atomic
     def set_item_status(order_id: UUID, item_id: UUID, status: str) -> OrderItem:
         item = get_object_or_404(
-            OrderItem, pk=item_id, order_id=order_id,
+            OrderItem,
+            pk=item_id,
+            order_id=order_id,
             status__in=(
                 OrderItem.Status.PENDING,
                 OrderItem.Status.PREPARING,
@@ -275,7 +296,9 @@ class OrderService:
             else:
                 logger.warning(
                     "Insufficient stock for %s: have %s, need %s",
-                    item.name, item.stock, needed,
+                    item.name,
+                    item.stock,
+                    needed,
                 )
 
     @staticmethod
@@ -299,8 +322,10 @@ class OrderService:
 
     @staticmethod
     @transaction.atomic
-    def split_by_items(order_id: UUID, splits_data: list[dict]) -> list[BillSplit]:
-        """Create splits with specific items/quantities per person."""
+    def split_by_items(
+        order_id: UUID,
+        splits_data: builtins.list[dict[str, Any]],
+    ) -> builtins.list[BillSplit]:
         order = get_object_or_404(Order, pk=order_id)
         items_qs = OrderItem.objects.filter(order=order).exclude(
             status=OrderItem.Status.CANCELLED,
@@ -358,15 +383,14 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def split_by_percentage(
-        order_id: UUID, percentages_data: list[dict]
-    ) -> list[BillSplit]:
+        order_id: UUID,
+        percentages_data: builtins.list[dict[str, Any]],
+    ) -> builtins.list[BillSplit]:
         """Split order total by percentage."""
         order = get_object_or_404(Order, pk=order_id)
         total_pct = sum(Decimal(str(d["percentage"])) for d in percentages_data)
         if total_pct != Decimal("100.00"):
-            raise ValueError(
-                f"Percentages must sum to 100, got {total_pct}"
-            )
+            raise ValueError(f"Percentages must sum to 100, got {total_pct}")
         splits: list[BillSplit] = []
         for data in percentages_data:
             pct = Decimal(str(data["percentage"]))
@@ -384,8 +408,8 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def split_equal(
-        order_id: UUID, n_splits: int, labels: list[str]
-    ) -> list[BillSplit]:
+        order_id: UUID, n_splits: int, labels: builtins.list[str]
+    ) -> builtins.list[BillSplit]:
         """Split order total equally into N parts."""
         order = get_object_or_404(Order, pk=order_id)
         if n_splits < 2:
@@ -418,7 +442,10 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def mark_split_paid(
-        split_id: UUID, method: str, reference: str = "", tip: Decimal | None = None,
+        split_id: UUID,
+        method: str,
+        reference: str = "",
+        tip: Decimal | None = None,
     ) -> BillSplit:
         """Mark a split as paid and create a Payment on the order."""
         split = get_object_or_404(BillSplit, pk=split_id)

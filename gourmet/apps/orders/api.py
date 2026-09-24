@@ -21,6 +21,7 @@ from .schemas import (
     SplitByItemsIn,
     SplitByPercentageIn,
     SplitEqualIn,
+    SplitItemOut,
     SplitOut,
     SplitPayIn,
 )
@@ -45,9 +46,7 @@ def list_active_orders(request: HttpRequest) -> Any:
     response={201: OrderOut},
     summary="Create an order",
 )
-def create_order(
-    request: HttpRequest, payload: OrderCreateIn
-) -> tuple[int, OrderOut]:
+def create_order(request: HttpRequest, payload: OrderCreateIn) -> tuple[int, OrderOut]:
     order = OrderService.create(table_id=payload.table_id, notes=payload.notes)
     return 201, OrderOut.model_validate(order)
 
@@ -89,7 +88,10 @@ def add_item(
 ) -> tuple[int, Any]:
     try:
         item = OrderService.add_item(
-            order_id, payload.product_id, payload.quantity, payload.notes,
+            order_id,
+            payload.product_id,
+            payload.quantity,
+            payload.notes,
         )
     except Exception as e:
         return 400, {"detail": str(e)}
@@ -127,9 +129,7 @@ def remove_item(
     response={200: OrderOut, 400: MessageOut},
     summary="Calculate order total",
 )
-def checkout(
-    request: HttpRequest, order_id: UUID
-) -> tuple[int, Any]:
+def checkout(request: HttpRequest, order_id: UUID) -> tuple[int, Any]:
     try:
         order = OrderService.checkout(order_id)
     except Exception as e:
@@ -142,12 +142,13 @@ def checkout(
     response={201: PaymentOut, 400: MessageOut},
     summary="Register payment",
 )
-def pay(
-    request: HttpRequest, order_id: UUID, payload: PaymentIn
-) -> tuple[int, Any]:
+def pay(request: HttpRequest, order_id: UUID, payload: PaymentIn) -> tuple[int, Any]:
     try:
         payment = OrderService.pay(
-            order_id, payload.method, payload.amount, payload.reference,
+            order_id,
+            payload.method,
+            payload.amount,
+            payload.reference,
         )
     except ValueError as e:
         return 400, {"detail": str(e)}
@@ -181,9 +182,7 @@ def set_item_priority(
     response={200: OrderOut, 400: MessageOut},
     summary="Close order",
 )
-def close_order(
-    request: HttpRequest, order_id: UUID
-) -> tuple[int, Any]:
+def close_order(request: HttpRequest, order_id: UUID) -> tuple[int, Any]:
     try:
         order = OrderService.close(order_id)
     except ValueError as e:
@@ -211,7 +210,7 @@ def update_item_status(
 def _split_to_out(split: Any) -> SplitOut:
     out = SplitOut.model_validate(split)
     out.items = [
-        {"id": bi.pk, "order_item_id": bi.order_item_id, "quantity": bi.quantity}
+        SplitItemOut(id=bi.pk, order_item_id=bi.order_item_id, quantity=bi.quantity)
         for bi in split.items.all()
     ]
     return out
@@ -222,8 +221,8 @@ def _split_to_out(split: Any) -> SplitOut:
     response=list[SplitOut],
     summary="List splits for an order",
 )
-def list_splits(request: HttpRequest, order_id: UUID) -> list[SplitOut]:
-    return [_split_to_out(s) for s in OrderService.get_splits(order_id)]
+def list_splits(request: HttpRequest, order_id: UUID) -> list[SplitItemOut]:
+    return [SplitItemOut.model_validate(s) for s in OrderService.get_splits(order_id)]
 
 
 @router.post(
@@ -243,7 +242,9 @@ def create_splits(
     try:
         if method == "equal":
             splits = OrderService.split_equal(
-                order_id, data["n_splits"], data["labels"],
+                order_id,
+                data["n_splits"],
+                data["labels"],
             )
         elif method == "by_percentage":
             splits = OrderService.split_by_percentage(order_id, data["splits"])
@@ -267,7 +268,10 @@ def pay_split(
 ) -> tuple[int, Any]:
     try:
         split = OrderService.mark_split_paid(
-            split_id, payload.method, payload.reference, payload.tip,
+            split_id,
+            payload.method,
+            payload.reference,
+            payload.tip,
         )
     except ValueError as e:
         return 400, {"detail": str(e)}
@@ -280,10 +284,12 @@ def pay_split(
     summary="Delete a split",
 )
 def delete_split(
-    request: HttpRequest, order_id: UUID, split_id: UUID,
+    request: HttpRequest,
+    order_id: UUID,
+    split_id: UUID,
 ) -> tuple[int, MessageOut]:
     try:
         OrderService.delete_split(split_id)
     except ValueError as e:
-        return 400, {"detail": str(e)}
+        return 400, MessageOut(detail=str(e))
     return 200, MessageOut(detail="Split deleted")

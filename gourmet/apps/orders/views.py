@@ -1,8 +1,10 @@
 import csv
+import io
 import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+import qrcode  # type: ignore
 from django.conf import settings
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
@@ -104,8 +106,12 @@ def pos_pay(request, order_id):
             data.get("reference", ""),
             Decimal(str(data.get("tip", 0))),
         )
-        log_audit(request, "payment.added", f"Order {str(order_id)[:8]}",
-                  f"{data['method']} ${data['amount']}")
+        log_audit(
+            request,
+            "payment.added",
+            f"Order {str(order_id)[:8]}",
+            f"{data['method']} ${data['amount']}",
+        )
         return JsonResponse(
             {
                 "id": str(payment.pk),
@@ -223,7 +229,9 @@ def order_detail(request, order_id):
         pk=order_id,
     )
     total_paid = sum(p.amount for p in order.payments.all())
-    token = AuthToken.objects.filter(user=request.user).first() or AuthToken.create_token(request.user)
+    token = AuthToken.objects.filter(
+        user=request.user
+    ).first() or AuthToken.create_token(request.user)
     return render(
         request,
         "pos/order_detail.html",
@@ -278,8 +286,12 @@ def add_payment(request, order_id):
         reference = request.POST.get("reference", "")
         try:
             OrderService.pay(order_id, method, amount, reference)
-            log_audit(request, "payment.added", f"Order {str(order_id)[:8]}",
-                      f"{method} ${amount}")
+            log_audit(
+                request,
+                "payment.added",
+                f"Order {str(order_id)[:8]}",
+                f"{method} ${amount}",
+            )
             messages.success(request, "Pago registrado")
         except ValueError as e:
             messages.error(request, str(e))
@@ -405,8 +417,11 @@ def close_report(request):
             cash_opening=cash_opening,
             cash_counted=cash_counted,
         )
-        log_audit(request, "daily_close.saved",
-                  f"cash={total_cash} counted={cash_counted} diff={diff}")
+        log_audit(
+            request,
+            "daily_close.saved",
+            f"cash={total_cash} counted={cash_counted} diff={diff}",
+        )
         saved_count = orders.count()
     else:
         saved_count = 0
@@ -513,8 +528,11 @@ def split_order(request, order_id):
     items_to_move.update(order=new_order)
     OrderService.checkout(new_order.pk)
     new_order.refresh_from_db()
-    log_audit(request, "order.splitted",
-              f"Order {str(order_id)[:8]} → {str(new_order.pk)[:8]}")
+    log_audit(
+        request,
+        "order.splitted",
+        f"Order {str(order_id)[:8]} → {str(new_order.pk)[:8]}",
+    )
     return JsonResponse(
         {
             "new_order_id": str(new_order.pk),
@@ -636,7 +654,10 @@ def audit_logs(request):
     return render(request, "pos/audit_logs.html", {"logs": logs})
 
 
-def menu_public(request):
+def menu_public(request, table_code: str):
+    """Vista pública del menú para autogestión por QR."""
+    table = get_object_or_404(Table, code=table_code, is_active=True)
+
     products = (
         Product.objects.filter(is_available=True)
         .select_related("category")
@@ -644,8 +665,223 @@ def menu_public(request):
     )
     categories = {p.category for p in products if p.category}
     sorted_cats = sorted(categories, key=lambda c: c.sort_order)
+
+    # Obtener carrito de la sesión
+    cart_key = f"cart_{table_code}"
+    cart = request.session.get(cart_key, {})
+    cart_items = []
+    cart_total = Decimal("0.00")
+    cart_count = 0
+
+    for product_id, qty in cart.items():
+        try:
+            product = Product.objects.get(pk=product_id, is_available=True)
+            item_total = product.price * qty
+            cart_items.append(
+                {
+                    "product": product,
+                    "quantity": qty,
+                    "total": item_total,
+                }
+            )
+            cart_total += item_total
+            cart_count += qty
+        except Product.DoesNotExist:
+            pass
+
     return render(
         request,
         "pos/customer_menu.html",
-        {"products": products, "categories": sorted_cats},
+        {
+            "table": table,
+            "products": products,
+            "categories": sorted_cats,
+            "cart_items": cart_items,
+            "cart_total": cart_total,
+            "cart_count": cart_count,
+            "table_code": table_code,
+        },
+    )
+
+
+@require_POST
+def add_to_cart(request, table_code: str):
+    """Agrega producto al carrito (sesión) vía HTMX."""
+    product_id = request.POST.get("product_id")
+    quantity = int(request.POST.get("quantity", 1))
+
+    cart_key = f"cart_{table_code}"
+    cart = request.session.get(cart_key, {})
+
+    if product_id in cart:
+        cart[product_id] += quantity
+    else:
+        cart[product_id] = quantity
+
+    request.session[cart_key] = cart
+    request.session.modified = True
+
+    # Recalcular total
+    # Recalcular totales y construir lista de items para el modal
+    cart_items = []
+    cart_total = Decimal("0.00")
+    cart_count = 0
+    for pid, qty in cart.items():
+        try:
+            product = Product.objects.get(pk=pid, is_available=True)
+            item_total = product.price * qty
+            cart_items.append(
+                {
+                    "product": product,
+                    "quantity": qty,
+                    "total": item_total,
+                }
+            )
+            cart_total += item_total
+            cart_count += qty
+        except Product.DoesNotExist:
+            pass
+
+    html = render_to_string(
+        "pos/_cart_summary.html",
+        {
+            "cart_items": cart_items,  # <-- AÑADIDO: Vital para el modal
+            "cart_total": cart_total,
+            "cart_count": cart_count,
+            "table_code": table_code,
+        },
+        request=request,
+    )
+    return HttpResponse(html)
+
+
+@require_POST
+def remove_from_cart(request, table_code: str):
+    """Elimina producto del carrito (sesión) vía HTMX."""
+    product_id = request.POST.get("product_id")
+
+    cart_key = f"cart_{table_code}"
+    cart = request.session.get(cart_key, {})
+
+    if product_id in cart:
+        del cart[product_id]
+        request.session[cart_key] = cart
+        request.session.modified = True
+
+    # Recalcular totales y construir lista de items para el modal
+    cart_items = []
+    cart_total = Decimal("0.00")
+    cart_count = 0
+    for pid, qty in cart.items():
+        try:
+            product = Product.objects.get(pk=pid, is_available=True)
+            item_total = product.price * qty
+            cart_items.append(
+                {
+                    "product": product,
+                    "quantity": qty,
+                    "total": item_total,
+                }
+            )
+            cart_total += item_total
+            cart_count += qty
+        except Product.DoesNotExist:
+            pass
+
+    html = render_to_string(
+        "pos/_cart_summary.html",
+        {
+            "cart_items": cart_items,
+            "cart_total": cart_total,
+            "cart_count": cart_count,
+            "table_code": table_code,
+        },
+        request=request,
+    )
+    return HttpResponse(html)
+
+
+@require_POST
+def checkout_qr(request, table_code: str):
+    """Confirma el pedido y lo envía a cocina."""
+    table = get_object_or_404(Table, code=table_code, is_active=True)
+    cart_key = f"cart_{table_code}"
+    cart = request.session.get(cart_key, {})
+
+    if not cart:
+        messages.error(request, "El carrito está vacío")
+        return redirect("menu_public", table_code=table_code)
+
+    try:
+        # Crear orden
+        order = OrderService.create(
+            table_id=table.pk,
+            notes="Pedido desde QR (autogestión)",
+            source=Order.Source.QR,
+        )
+
+        # Agregar items
+        for product_id, qty in cart.items():
+            OrderService.add_item(order.pk, product_id, qty, "")
+
+        # Checkout (calcular totales)
+        order = OrderService.checkout(order.pk)
+
+        # Limpiar carrito
+        del request.session[cart_key]
+        request.session.modified = True
+
+        messages.success(
+            request, f"¡Pedido enviado a cocina! Orden #{str(order.pk)[:8]}"
+        )
+        return render(
+            request, "pos/order_success.html", {"order": order, "table": table}
+        )
+
+    except Exception as e:
+        messages.error(request, f"Error al crear el pedido: {str(e)}")
+        return redirect("menu_public", table_code=table_code)
+
+
+@role_required("admin", "waiter")
+def generate_qr_table(request, table_code: str):
+    """Genera QR para una mesa específica."""
+
+    # URL completa del menú
+    menu_url = request.build_absolute_uri(f"/menu/mesa/{table_code}/")
+
+    # Generar QR
+    img = qrcode.make(menu_url)
+
+    # Guardar en buffer
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return HttpResponse(buffer.getvalue(), content_type="image/png")
+
+
+@role_required("admin", "waiter")
+def print_qr_tables(request):
+    """Vista para imprimir todos los QRs de las mesas."""
+    tables = Table.objects.filter(is_active=True).order_by("code")
+
+    # Generar URLs para cada mesa
+    tables_with_qr = []
+    for table in tables:
+        menu_url = request.build_absolute_uri(f"/menu/mesa/{table.code}/")
+        tables_with_qr.append(
+            {
+                "table": table,
+                "url": menu_url,
+            }
+        )
+
+    return render(
+        request,
+        "pos/print_qr_tables.html",
+        {
+            "tables": tables_with_qr,
+            "business_name": settings.BUSINESS_NAME,
+        },
     )

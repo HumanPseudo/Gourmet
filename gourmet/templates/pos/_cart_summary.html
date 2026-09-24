@@ -1,0 +1,159 @@
+{% load currency %}
+<div
+  id="cart-summary"
+  x-data="{ open: false }"
+  style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 2px solid #dee2e6; padding: 12px 20px; box-shadow: 0 -4px 12px rgba(0,0,0,0.1); z-index: 1000;"
+>
+  <!-- MODAL -->
+  <div
+    x-show="open"
+    x-transition
+    style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 1001; display: flex; align-items: center; justify-content: center; padding: 16px;"
+    @keydown.escape.window="open = false"
+  >
+    <div
+      @click.away="open = false"
+      style="background: #ffffff; border-radius: 8px; width: 100%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);"
+    >
+      <div
+        style="padding: 14px 16px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; background: #f8f9fa;"
+      >
+        <h3 style="margin: 0; font-size: 16px; font-weight: bold; color: #333;">
+          🛒 Tu Carrito
+        </h3>
+        <button
+          type="button"
+          @click="open = false"
+          style="background: none; border: none; font-size: 22px; cursor: pointer; color: #666; line-height: 1;"
+        >
+          &times;
+        </button>
+      </div>
+
+      <div style="padding: 16px; overflow-y: auto; flex: 1;">
+        {% if cart_items %}
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <thead>
+              <tr
+                style="border-bottom: 2px solid #dee2e6; text-align: left; color: #666; font-size: 12px;"
+              >
+                <th style="padding-bottom: 8px;">Producto</th>
+                <th style="padding-bottom: 8px; text-align: center;">Cant.</th>
+                <th style="padding-bottom: 8px; text-align: right;">Precio</th>
+                <th style="padding-bottom: 8px; text-align: right;">Subtotal</th>
+                <th style="padding-bottom: 8px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in cart_items %}
+                <tr style="border-bottom: 1px solid #f0f0f0;">
+                  <td style="padding: 10px 0; font-weight: 600; color: #333;">
+                    {{ item.product.name }}
+                  </td>
+                  <td style="padding: 10px 0; text-align: center; color: #666;">
+                    {{ item.quantity }}
+                  </td>
+                  <td style="padding: 10px 0; text-align: right; color: #666;">
+                    {{ item.product.price|floatformat:2|peso }}
+                  </td>
+                  <td
+                    style="padding: 10px 0; text-align: right; font-weight: bold; color: #28a745;"
+                  >
+                    {{ item.total|floatformat:2|peso }}
+                  </td>
+                  <td style="padding: 10px 0; text-align: center;">
+                    <form
+                      hx-post="{% url 'remove_from_cart' table_code %}"
+                      hx-target="#cart-summary"
+                      style="margin: 0; display: inline;"
+                    >
+                      {% csrf_token %}
+                      <input
+                        type="hidden"
+                        name="product_id"
+                        value="{{ item.product.id }}"
+                      />
+                      <button
+                        type="submit"
+                        style="background: #dc3545; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;"
+                        title="Eliminar del carrito"
+                      >
+                        🗑️
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p
+            style="text-align: center; color: #6c757d; margin: 20px 0; font-size: 14px;"
+          >
+            No hay productos en el carrito todavía.
+          </p>
+        {% endif %}
+      </div>
+
+      <div
+        style="padding: 14px 16px; border-top: 1px solid #dee2e6; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center;"
+      >
+        <div>
+          <span style="font-size: 13px; color: #666;">Total: </span>
+          <strong style="font-size: 18px; color: #28a745;"
+            >{{ cart_total|floatformat:2|peso }}</strong
+          >
+        </div>
+        <button
+          type="button"
+          @click="open = false"
+          style="background: #6c757d; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BARRA INFERIOR -->
+  <div
+    style="max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;"
+  >
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <button
+        type="button"
+        @click="open = true"
+        style="background: #f8f9fa; border: 1px solid #ced4da; padding: 6px 12px; border-radius: 6px; font-size: 14px; font-weight: bold; color: #333; cursor: pointer; display: flex; align-items: center; gap: 6px;"
+      >
+        🛒 {{ cart_count }} item{{ cart_count|pluralize }}
+        <span
+          style="font-size: 11px; color: #007bff; text-decoration: underline; margin-left: 2px;"
+          >(Ver detalle)</span
+        >
+      </button>
+      <span style="font-size: 20px; font-weight: bold; color: #28a745;"
+        >{{ cart_total|floatformat:2|peso }}</span
+      >
+    </div>
+
+    {% if cart_count > 0 %}
+      <form
+        method="post"
+        action="{% url 'checkout_qr' table_code %}"
+        style="margin: 0;"
+      >
+        {% csrf_token %}
+        <button
+          type="submit"
+          style="background: #28a745; color: #ffffff; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer;"
+        >
+          Confirmar Pedido
+        </button>
+      </form>
+    {% else %}
+      <span style="color: #6c757d; font-style: italic; font-size: 13px;"
+        >Agrega productos al carrito</span
+      >
+    {% endif %}
+  </div>
+</div>

@@ -33,10 +33,18 @@ ARG PROJECT_NAME
 ENV DJANGO_SETTINGS_MODULE=${PROJECT_NAME}.settings
 
 
+# Instalar dependencias utilizando montajes de caché y bind
 RUN --mount=type=cache,target=/root/.cache/uv \
-  --mount=type=bind,source=uv.lock,target=uv.lock \
-  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-  uv sync --locked
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project
+
+# Copiar el código fuente después de instalar dependencias
+COPY . ./
+
+# Instalar el proyecto actual
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 
 COPY . ./
 COPY --from=build-node /app/dist/ /opt/static/
