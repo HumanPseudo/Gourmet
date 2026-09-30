@@ -33,14 +33,16 @@
     <span style="font-weight:bold;font-size:18px;color:#333;">Gourmet POS</span>
     <a href="{% url 'order_list' %}" style="color:#555;text-decoration:none;font-size:13px;">📋 Órdenes</a>
     <a href="{% url 'kitchen' %}" style="color:#555;text-decoration:none;font-size:13px;">🍳 Cocina</a>
+    <a href="{% url 'floor_view' %}" style="color:#555;text-decoration:none;font-size:13px;">🗺 Piso</a>
+    <a href="{% url 'reservation_calendar' %}" style="color:#555;text-decoration:none;font-size:13px;">📅 Reservas</a>
+    {% if user.is_superuser or user.role.name == 'admin' %}
+      <a href="{% url 'dashboard' %}" style="color:#555;text-decoration:none;font-size:13px;">📊 Dashboard</a>
+      <a href="{% url 'inventory_list' %}" style="color:#555;text-decoration:none;font-size:13px;">📦 Inventario</a>
+    {% endif %}
     <div style="flex:1;"></div>
-    <label style="font-weight:600;font-size:14px;">Mesa:</label>
-    <select x-model="tableId" style="padding:6px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px;">
-      <option value="">Seleccionar mesa</option>
-      <template x-for="t in tables" :key="t.id">
-        <option :value="t.id" x-text="t.code + ' ' + (t.status==='occupied'?'🔴':'🟢')" :style="t.status==='occupied'?'color:#dc3545':'color:#28a745'"></option>
-      </template>
-    </select>
+    <button @click="showFloor = true" style="padding:6px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px;background:#fff;cursor:pointer;">
+      🗺 Mesa: <span x-text="currentTableCode"></span>
+    </button>
     <template x-if="orderId">
       <span style="background:#28a745;color:#fff;padding:4px 10px;border-radius:12px;font-size:12px;">
         Orden #<span x-text="orderId.slice(0,8)"></span>
@@ -48,6 +50,54 @@
     </template>
     <button @click="resetAll()" style="background:#dc3545;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;">⟳ Nueva</button>
     <a href="{% url 'index' %}" style="color:#999;text-decoration:none;font-size:12px;margin-left:4px;">Salir</a>
+  </div>
+
+  <div x-show="showFloor" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:center;justify-content:center;" @click.self="showFloor=false">
+    <div style="background:#fff;border-radius:10px;padding:20px;max-width:90vw;max-height:85vh;overflow:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:24px;">
+        <h2 style="margin:0;font-size:16px;">Seleccionar mesa</h2>
+        <button @click="showFloor=false" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>
+      </div>
+      <div style="font-size:12px;color:#666;margin-bottom:10px;">🟢 Libre &nbsp; 🔴 Ocupada (click para ver su orden) &nbsp; 🔵 Reservada &nbsp; ⚪ Limpieza / fuera de servicio</div>
+      <template x-if="floorLayout">
+        <div :style="floorBoardStyle()">
+          <template x-for="t in floorItems" :key="t.table_id">
+            <div :style="floorItemStyle(t)" :title="t.code + ' · ' + t.capacity + ' pers.' + (t.order_id ? ' · orden abierta' : '')" @click="selectTable(t)">
+              <span x-text="t.code"></span>
+            </div>
+          </template>
+        </div>
+      </template>
+      <template x-if="floorUnplaced.length">
+        <div style="margin-top:14px;">
+          <div style="font-size:12px;color:#666;margin-bottom:6px;" x-show="floorLayout">Otras mesas</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <template x-for="t in floorUnplaced" :key="t.table_id">
+              <button :style="floorButtonStyle(t)" :title="t.capacity + ' pers.' + (t.order_id ? ' · orden abierta' : '')" @click="selectTable(t)">
+                <span x-text="t.code"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </template>
+      <div x-show="!floorLayout && floorUnplaced.length===0" style="color:#999;font-size:13px;">No hay mesas activas.</div>
+      <template x-if="noTableOrders.length">
+        <div style="margin-top:16px;border-top:1px solid #eee;padding-top:12px;">
+          <div style="font-size:12px;color:#666;margin-bottom:6px;">📋 Órdenes sin mesa</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <template x-for="o in noTableOrders" :key="o.order_id">
+              <button
+                @click="selectNoTableOrder(o)"
+                :style="'text-align:left;padding:8px 12px;border:1px solid #dee2e6;border-radius:6px;cursor:pointer;font-size:13px;background:' + (o.order_id===orderId ? '#333' : '#fff') + ';color:' + (o.order_id===orderId ? '#fff' : '#333') + ';'"
+              >
+                <span x-text="'#' + o.order_id.slice(0,8)"></span>
+                <span x-text="(o.customer_name ? ' — ' + o.customer_name : '') + ' · ' + o.item_count + ' items · ' + _formatPeso(o.total)"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
 
   <div style="display:flex;flex:1;overflow:hidden;">
@@ -67,7 +117,7 @@
           <template x-for="p in filteredProducts" :key="p.id">
             <button class="pos-btn" :class="outOfStock.includes(p.id)?'oos':''" @click="addItem(p)" :disabled="outOfStock.includes(p.id)">
               <div class="name" x-text="p.name"></div>
-              <div class="price" x-text="_formatPeso(parseFloat(p.price))"></div>
+              <div class="price" x-text="_formatPeso(p.price)"></div>
               <div x-show="outOfStock.includes(p.id)" style="font-size:10px;color:#dc3545;font-weight:600;margin-top:2px;">Sin stock</div>
               <div x-show="!outOfStock.includes(p.id) && lowStock.includes(p.id)" style="font-size:10px;color:#856404;font-weight:600;margin-top:2px;">⚠ Bajo stock</div>
             </button>
@@ -103,6 +153,12 @@
                   </div>
                 </div>
                 <div style="font-weight:600;font-size:13px;" x-text="_formatPeso(item.price*item.qty)"></div>
+                <button
+                  x-show="item.status==='pending' || item.status==='preparing'"
+                  @click="removeOrderItem(item.id)"
+                  title="Quitar de la orden"
+                  style="background:none;border:none;color:#dc3545;cursor:pointer;font-size:14px;padding:2px 4px;"
+                >✕</button>
               </div>
             </template>
             <div style="text-align:center;padding:8px 0;color:#999;font-size:11px;" x-show="orderItems.length===0">Cargando...</div>
@@ -113,7 +169,7 @@
             <div style="flex:1;">
               <div x-text="item.name" style="font-weight:600;font-size:14px;"></div>
               <div style="font-size:12px;color:#666;">
-                <span x-text="_formatPeso(parseFloat(item.price))"></span>
+                <span x-text="_formatPeso(item.price)"></span>
               </div>
             </div>
             <button class="qty-btn" @click="changeQty(idx,-1)" :disabled="item.qty<=1">−</button>

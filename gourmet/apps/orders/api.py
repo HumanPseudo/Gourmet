@@ -33,7 +33,7 @@ router = Router(tags=["Orders"], auth=TokenAuth())
 @router.get("", response=list[OrderOut], summary="List orders")
 @paginate
 def list_orders(request: HttpRequest, status: str | None = None) -> Any:
-    return OrderService.list(status=status)
+    return OrderService.list_orders(status=status)
 
 
 @router.get("/active", response=list[OrderOut], summary="List active orders")
@@ -221,8 +221,8 @@ def _split_to_out(split: Any) -> SplitOut:
     response=list[SplitOut],
     summary="List splits for an order",
 )
-def list_splits(request: HttpRequest, order_id: UUID) -> list[SplitItemOut]:
-    return [SplitItemOut.model_validate(s) for s in OrderService.get_splits(order_id)]
+def list_splits(request: HttpRequest, order_id: UUID) -> list[SplitOut]:
+    return [_split_to_out(s) for s in OrderService.get_splits(order_id)]
 
 
 @router.post(
@@ -242,9 +242,7 @@ def create_splits(
     try:
         if method == "equal":
             splits = OrderService.split_equal(
-                order_id,
-                data["n_splits"],
-                data["labels"],
+                order_id, data["n_splits"], data["labels"],
             )
         elif method == "by_percentage":
             splits = OrderService.split_by_percentage(order_id, data["splits"])
@@ -268,10 +266,7 @@ def pay_split(
 ) -> tuple[int, Any]:
     try:
         split = OrderService.mark_split_paid(
-            split_id,
-            payload.method,
-            payload.reference,
-            payload.tip,
+            split_id, payload.method, payload.reference, payload.tip,
         )
     except ValueError as e:
         return 400, {"detail": str(e)}
@@ -284,9 +279,7 @@ def pay_split(
     summary="Delete a split",
 )
 def delete_split(
-    request: HttpRequest,
-    order_id: UUID,
-    split_id: UUID,
+    request: HttpRequest, order_id: UUID, split_id: UUID,
 ) -> tuple[int, MessageOut]:
     try:
         OrderService.delete_split(split_id)

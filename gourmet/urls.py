@@ -36,6 +36,7 @@ from gourmet.apps.orders.views import (
     close_report,
     create_order,
     dashboard,
+    floor_view,
     kitchen,
     order_detail,
     order_list,
@@ -43,14 +44,30 @@ from gourmet.apps.orders.views import (
     pos_add_items,
     pos_close,
     pos_create_order,
+    pos_floor_status,
+    pos_order_json,
     pos_pay,
+    pos_remove_item,
     pos_set_priority,
+    pos_set_table,
     pos_update_item_status,
     print_kitchen,
     print_receipt,
     reopen_order,
     sales_csv,
     split_order,
+)
+from gourmet.apps.reservations.views import (
+    reservation_calendar,
+    reservation_cancel,
+    reservation_list,
+)
+from gourmet.apps.tables.views import (
+    table_layout_create,
+    table_layout_delete,
+    table_layout_edit,
+    table_layout_list,
+    table_layout_save_positions,
 )
 
 handler400 = "gourmet.views.bad_request"
@@ -77,6 +94,14 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("pos/add-items/<uuid:order_id>/", pos_add_items, name="pos_add_items"),
     path("pos/pay/<uuid:order_id>/", pos_pay, name="pos_pay"),
     path("pos/close/<uuid:order_id>/", pos_close, name="pos_close"),
+    path("pos/floor-status/", pos_floor_status, name="pos_floor_status"),
+    path("pos/order-json/<uuid:order_id>/", pos_order_json, name="pos_order_json"),
+    path(
+        "pos/remove-item/<uuid:order_id>/<uuid:item_id>/",
+        pos_remove_item,
+        name="pos_remove_item",
+    ),
+    path("pos/set-table/<uuid:order_id>/", pos_set_table, name="pos_set_table"),
     path("pos/kitchen/", kitchen, name="kitchen"),
     path("pos/orders/", order_list, name="order_list"),
     path("pos/orders/create/", create_order, name="create_order"),
@@ -139,5 +164,36 @@ urlpatterns: list[URLPattern | URLResolver] = [
         "menu/mesa/<str:table_code>/checkout/",
         order_views.checkout_qr,
         name="checkout_qr",
+    ),
+    path("pos/reservations/", reservation_list, name="reservation_list"),
+    path(
+        "pos/reservations/calendar/",
+        reservation_calendar,
+        name="reservation_calendar",
+    ),
+    path(
+        "pos/reservations/<uuid:reservation_id>/cancel/",
+        reservation_cancel,
+        name="reservation_cancel",
+    ),
+    path("pos/floor/", floor_view, name="floor_view"),
+    path("pos/floor/layouts/", table_layout_list, name="floor_layout_list"),
+    path(
+        "pos/floor/layouts/new/", table_layout_create, name="floor_layout_create"
+    ),
+    path(
+        "pos/floor/layouts/<uuid:layout_id>/",
+        table_layout_edit,
+        name="floor_layout_edit",
+    ),
+    path(
+        "pos/floor/layouts/<uuid:layout_id>/positions/",
+        table_layout_save_positions,
+        name="floor_layout_save_positions",
+    ),
+    path(
+        "pos/floor/layouts/<uuid:layout_id>/delete/",
+        table_layout_delete,
+        name="floor_layout_delete",
     ),
 ]

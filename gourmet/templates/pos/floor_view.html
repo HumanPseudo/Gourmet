@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block head_title %}Vista de piso | Gourmet{% endblock %}
+{% block content %}
+<div style="padding: 20px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+    <h1 style="margin: 0;">Vista de piso</h1>
+    <a href="{% url 'floor_layout_list' %}" style="color: #6c757d; text-decoration: none; font-size: 13px;">⚙ Editar planos</a>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div style="background: #d4edda; color: #155724; padding: 10px 16px; border-radius: 6px; margin-bottom: 12px; font-size: 14px;">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div style="font-size: 13px; color: #666; margin-bottom: 12px;">
+    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#28a745;margin-right:4px;"></span>Libre
+    &nbsp;&nbsp;
+    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#dc3545;margin-right:4px;"></span>Ocupada (click para ver su orden)
+    &nbsp;&nbsp;
+    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#007bff;margin-right:4px;"></span>Reservada
+    &nbsp;&nbsp;
+    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6c757d;margin-right:4px;"></span>Limpieza / fuera de servicio
+  </div>
+
+  {% if layout_size %}
+    <div style="position: relative; width: {{ layout_size.width }}px; height: {{ layout_size.height }}px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; max-width: 100%; overflow: auto; margin-bottom: 20px;">
+      {% for row in positioned %}
+        {% include "pos/_floor_table_box.html" with row=row positioned=True %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if unplaced %}
+    <div style="font-size: 13px; color: #666; margin-bottom: 8px;">{% if layout_size %}Otras mesas{% else %}Mesas{% endif %}</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px;">
+      {% for row in unplaced %}
+        {% include "pos/_floor_table_box.html" with row=row positioned=False %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if not layout_size and not unplaced %}
+    <div style="color: #999; font-size: 13px; margin-bottom: 24px;">No hay mesas activas.</div>
+  {% endif %}
+
+  <h2 style="font-size: 15px; margin-bottom: 10px;">Asignar mesero</h2>
+  <table style="width: 100%; max-width: 600px; border-collapse: collapse;">
+    <thead>
+      <tr style="background: #f8f9fa; text-align: left;">
+        <th style="padding: 8px; border-bottom: 2px solid #dee2e6;">Mesa</th>
+        <th style="padding: 8px; border-bottom: 2px solid #dee2e6;">Mesero asignado</th>
+        <th style="padding: 8px; border-bottom: 2px solid #dee2e6;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in positioned %}
+        {% include "pos/_floor_waiter_row.html" with row=row %}
+      {% endfor %}
+      {% for row in unplaced %}
+        {% include "pos/_floor_waiter_row.html" with row=row %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

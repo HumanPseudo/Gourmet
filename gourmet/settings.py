@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "gourmet.apps.jukebox",
     "gourmet.apps.orders",
     "gourmet.apps.inventory",
+    "gourmet.apps.reservations",
 ]
 
 MIDDLEWARE = [

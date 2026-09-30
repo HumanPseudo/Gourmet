@@ -478,7 +478,7 @@ requires-dist = [
     { name = "gunicorn", specifier = "==25.3.0" },
     { name = "psycopg", specifier = "==3.3.3" },
     { name = "python-json-logger", specifier = "==4.1.0" },
-    { name = "qrcode", extras = ["pil"], specifier = ">=7.4.0" },
+    { name = "qrcode", extras = ["pil"], specifier = "==8.2" },
     { name = "requests", specifier = "==2.33.1" },
     { name = "sentry-sdk", specifier = "==2.58.0" },
     { name = "whitenoise", specifier = "==6.12.0" },

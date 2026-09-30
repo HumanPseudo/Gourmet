@@ -1,12 +1,22 @@
+const FLOOR_TABLE_BOX = 56;
+const FLOOR_STATUS_COLOR = {
+  available: '#28a745',
+  occupied: '#dc3545',
+  reserved: '#007bff',
+  cleaning: '#6c757d',
+  out_of_service: '#6c757d',
+};
+
 document.addEventListener('alpine:init', () => {
   Alpine.data('posApp', () => ({
-    categories: [], products: [], tables: [], activeCat: '', search: '',
+    categories: [], products: [], activeCat: '', search: '',
     cart: [], orderItems: [], tableId: '', orderId: null, customerName: '', orderDiscount: 0,
     payMethod: 'cash', payAmount: 0, payError: '',
     totalPaid: 0, orderSubtotal: 0, orderTotal: 0,
     createOrderError: '', closeError: '', closed: false, tipAmount: 0, showPay: false,
     outOfStock: [], lowStock: [],
     loadError: '',
+    showFloor: false, floorLayout: null, floorItems: [], floorUnplaced: [], noTableOrders: [],
     methods: [
       { value: 'cash', label: '\u{1F4B5} Efectivo', color: '#28a745' },
       { value: 'card', label: '\u{1F4B3} Tarjeta', color: '#007bff' },
@@ -23,18 +33,121 @@ document.addEventListener('alpine:init', () => {
         if (meta) this.outOfStock = JSON.parse(meta.content);
         const ls = document.querySelector('meta[name=low-stock]');
         if (ls) this.lowStock = JSON.parse(ls.content);
-        const [cats, prods, tabs] = await Promise.all([
+        const [cats, prods] = await Promise.all([
           fetch('/api/menu/categories').then(r => { if (!r.ok) throw new Error('categories: ' + r.status); return r.json(); }),
           fetch('/api/menu/products').then(r => { if (!r.ok) throw new Error('products: ' + r.status); return r.json(); }),
-          fetch('/api/tables').then(r => { if (!r.ok) throw new Error('tables: ' + r.status); return r.json(); }),
         ]);
         this.categories = cats.items || cats || [];
         this.products = (prods.items || prods || []).filter(p => p.is_available);
-        this.tables = tabs.items || tabs || [];
+        await this.refreshFloor();
       } catch (e) {
         this.loadError = 'Error al cargar datos: ' + e.message;
       }
-      setInterval(() => this.refreshTables(), 30000);
+      setInterval(() => this.refreshFloor(), 30000);
+    },
+
+    get currentTableCode() {
+      const all = this.floorItems.concat(this.floorUnplaced);
+      const t = all.find(t => t.table_id === this.tableId);
+      return t ? t.code : 'Ninguna';
+    },
+
+    floorItemStyle(t) {
+      const radius = t.shape === 'round' ? '50%' : '8px';
+      const rotation = t.rotation || 0;
+      return 'position:absolute;left:' + t.pos_x + 'px;top:' + t.pos_y + 'px;'
+        + 'width:' + FLOOR_TABLE_BOX + 'px;height:' + FLOOR_TABLE_BOX + 'px;display:flex;flex-direction:column;'
+        + 'align-items:center;justify-content:center;cursor:pointer;border-radius:' + radius + ';'
+        + 'transform:rotate(' + rotation + 'deg);color:#fff;font-weight:700;font-size:12px;'
+        + 'user-select:none;box-shadow:0 1px 3px rgba(0,0,0,.3);'
+        + 'background:' + (FLOOR_STATUS_COLOR[t.status] || '#6c757d') + ';'
+        + (t.table_id === this.tableId ? 'outline:3px solid #333;outline-offset:2px;' : '');
+    },
+
+    floorButtonStyle(t) {
+      const bg = t.table_id === this.tableId ? '#333' : (FLOOR_STATUS_COLOR[t.status] || '#6c757d');
+      return 'padding:10px 14px;border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;background:' + bg + ';';
+    },
+
+    floorBoardStyle() {
+      if (!this.floorLayout) return '';
+      return 'position:relative;width:' + this.floorLayout.width + 'px;height:' + this.floorLayout.height + 'px;'
+        + 'background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;max-width:100%;overflow:auto;';
+    },
+
+    async refreshFloor() {
+      try {
+        const r = await fetch('/pos/floor-status/');
+        if (!r.ok) return;
+        const data = await r.json();
+        this.floorLayout = data.layout;
+        this.floorItems = data.items || [];
+        this.floorUnplaced = data.unplaced || [];
+        this.noTableOrders = data.no_table_orders || [];
+      } catch (_) {}
+    },
+
+    async selectNoTableOrder(o) {
+      if (o.order_id === this.orderId) { this.showFloor = false; return; }
+      if ((this.cart.length || this.orderId) && !confirm('¿Cambiar a esta orden? Perderás la selección actual.')) return;
+      await this.loadOrder(o.order_id);
+      this.showFloor = false;
+    },
+
+    async selectTable(t) {
+      if (t.status === 'occupied' && t.order_id) {
+        if (t.order_id === this.orderId) { this.showFloor = false; return; }
+        if ((this.cart.length || this.orderId) && !confirm('¿Cambiar a la orden de esta mesa? Perderás la selección actual.')) return;
+        await this.loadOrder(t.order_id);
+        this.showFloor = false;
+        return;
+      }
+      if (this.orderId) {
+        const res = await fetch('/pos/set-table/' + this.orderId + '/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrf },
+          body: JSON.stringify({ table_id: t.table_id }),
+        });
+        if (!res.ok) { const err = await res.json(); alert(err.error || 'Error'); return; }
+        await this.refreshOrder();
+        await this.refreshFloor();
+      } else {
+        this.tableId = t.table_id;
+      }
+      this.showFloor = false;
+    },
+
+    async loadOrder(orderId) {
+      this.orderId = orderId;
+      this.cart = [];
+      await this.refreshOrder();
+    },
+
+    async refreshOrder() {
+      if (!this.orderId) return;
+      const res = await fetch('/pos/order-json/' + this.orderId + '/');
+      if (!res.ok) return;
+      this._applyOrder(await res.json());
+    },
+
+    _applyOrder(data) {
+      this.tableId = data.table_id || '';
+      this.customerName = data.customer_name || '';
+      this.orderItems = data.items.map(i => ({ id: i.id, name: i.name, price: parseFloat(i.price), qty: i.quantity, status: i.status }));
+      this.orderSubtotal = parseFloat(data.subtotal || 0);
+      this.orderTotal = parseFloat(data.total || 0);
+      this.totalPaid = parseFloat(data.total_paid || 0);
+      this.closed = data.status !== 'open';
+    },
+
+    async removeOrderItem(itemId) {
+      if (!confirm('¿Quitar este item de la orden?')) return;
+      const res = await fetch('/pos/remove-item/' + this.orderId + '/' + itemId + '/', {
+        method: 'POST', headers: { 'X-CSRFToken': this.csrf },
+      });
+      if (!res.ok) return;
+      this._applyOrder(await res.json());
+      await this.refreshFloor();
     },
 
     get stockClass() {
@@ -54,7 +167,7 @@ document.addEventListener('alpine:init', () => {
     _lineTotal(item) { return item.price * item.qty; },
 
     _formatPeso(n) {
-      const parts = n.toFixed(2).split('.');
+      const parts = Number(n).toFixed(2).split('.');
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       return '$ ' + parts.join(',');
     },
@@ -117,11 +230,9 @@ document.addEventListener('alpine:init', () => {
       if (!res.ok) { const err = await res.json(); this.createOrderError = err.error || 'Error del servidor'; return; }
       const data = await res.json();
       this.orderId = data.id;
-      this.orderSubtotal = parseFloat(data.subtotal || 0);
-      this.orderTotal = parseFloat(data.total || 0);
-      this.orderItems = this.cart.map(i => ({ name: i.name, price: i.price, qty: i.qty, status: 'pending' }));
       this.cart = [];
-      this.totalPaid = parseFloat(data.total_paid || 0);
+      this._applyOrder(data);
+      await this.refreshFloor();
     },
 
     async addItems() {
@@ -134,12 +245,8 @@ document.addEventListener('alpine:init', () => {
         }),
       });
       if (!res.ok) return;
-      const data = await res.json();
-      this.orderSubtotal = parseFloat(data.subtotal || 0);
-      this.orderTotal = parseFloat(data.total || 0);
-      this.orderItems = [...this.orderItems, ...this.cart.map(i => ({ name: i.name, price: i.price, qty: i.qty, status: 'pending' }))];
       this.cart = [];
-      this.totalPaid = parseFloat(data.total_paid || 0);
+      this._applyOrder(await res.json());
     },
 
     async payRemaining() {
@@ -165,25 +272,17 @@ document.addEventListener('alpine:init', () => {
       });
       if (res.ok) {
         this.closed = true;
-        await this.refreshTables();
+        await this.refreshFloor();
       }
-    },
-
-    async refreshTables() {
-      try {
-        const r = await fetch('/api/tables');
-        if (!r.ok) return;
-        const data = await r.json();
-        this.tables = data.items || data || [];
-      } catch (_) {}
     },
 
     async resetAll() {
       this.cart = []; this.orderItems = []; this.orderId = null; this.payMethod = 'cash';
+      this.tableId = '';
       this.payAmount = 0; this.payError = ''; this.totalPaid = 0;
       this.orderSubtotal = 0; this.orderTotal = 0; this.customerName = ''; this.orderDiscount = 0;
       this.createOrderError = ''; this.closeError = ''; this.closed = false; this.tipAmount = 0; this.showPay = false;
-      await this.refreshTables();
+      await this.refreshFloor();
     },
 
   }));

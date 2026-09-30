@@ -33,20 +33,19 @@ ARG PROJECT_NAME
 ENV DJANGO_SETTINGS_MODULE=${PROJECT_NAME}.settings
 
 
-# Instalar dependencias utilizando montajes de caché y bind
+# Instalar dependencias sin el proyecto para no invalidar la capa con el código
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project
+  --mount=type=bind,source=uv.lock,target=uv.lock \
+  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+  uv sync --locked --no-install-project
 
-# Copiar el código fuente después de instalar dependencias
+# Copiar el código fuente
 COPY . ./
 
 # Instalar el proyecto actual
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen
+  uv sync --locked
 
-COPY . ./
 COPY --from=build-node /app/dist/ /opt/static/
 
 # Copy JS vendor libs to be included globally in Django
