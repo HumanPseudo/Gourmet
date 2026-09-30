@@ -4,6 +4,7 @@ import json
 import uuid
 from decimal import Decimal
 
+from django.http import Http404
 from django.test import TestCase
 from django.urls import reverse
 
@@ -547,6 +548,7 @@ class BillSplitTests(TestCase):
         assert not BillSplit.objects.filter(pk=split_id).exists()
 
 
+
 class SetTableServiceTests(TestCase):
     def setUp(self) -> None:
         self.table1 = Table.objects.create(code="ST1", capacity=4)
@@ -729,3 +731,326 @@ class FloorViewTests(TestCase):
         assert response.status_code == 302
         self.table1.refresh_from_db()
         assert self.table1.assigned_waiter_id is None
+
+
+
+class QROrderingTests(TestCase):
+    """Flujo de autogestión: menú público, carrito y checkout por QR."""
+
+    def setUp(self) -> None:
+        self.admin = User.objects.create_superuser(
+            email="qr-admin@test.com",
+            password="admin1234",
+            name="Admin",
+        )
+        self.role = Role.objects.create(name="waiter")
+        self.waiter = User.objects.create(
+            email="qr-waiter@test.com", name="Ana", role=self.role, is_staff=True
+        )
+        self.table = Table.objects.create(code="Q1", capacity=4)
+        self.category = Category.objects.create(name="Food")
+        self.product = Product.objects.create(
+            category=self.category,
+            name="Pizza",
+            price=Decimal("10000.00"),
+            is_available=True,
+        )
+
+    # ── Menú público ────────────────────────────────────────────────
+
+    def test_menu_requires_known_table(self) -> None:
+        assert self.client.get(
+            reverse("menu_public", kwargs={"table_code": "NOPE"})
+        ).status_code == 404
+
+    def test_menu_renders_for_active_table(self) -> None:
+        response = self.client.get(
+            reverse("menu_public", kwargs={"table_code": "Q1"})
+        )
+        assert response.status_code == 200
+        assert b"Pizza" in response.content
+
+    def test_menu_404_for_inactive_table(self) -> None:
+        self.table.is_active = False
+        self.table.save()
+        assert self.client.get(
+            reverse("menu_public", kwargs={"table_code": "Q1"})
+        ).status_code == 404
+
+    # ── Carrito ─────────────────────────────────────────────────────
+
+    def test_add_to_cart_stores_session(self) -> None:
+        response = self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": str(self.product.pk), "quantity": "2"},
+        )
+        assert response.status_code == 200
+        assert b"Pizza" in response.content
+        assert self.client.session["cart_Q1"] == {str(self.product.pk): 2}
+
+    def test_add_to_cart_accumulates_quantity(self) -> None:
+        for _ in range(2):
+            self.client.post(
+                reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+                {"product_id": str(self.product.pk), "quantity": "3"},
+            )
+        assert self.client.session["cart_Q1"] == {str(self.product.pk): 6}
+
+    def test_add_to_cart_rejects_bad_uuid(self) -> None:
+        response = self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": "not-a-uuid", "quantity": "1"},
+        )
+        assert response.status_code == 400
+        assert "cart_Q1" not in self.client.session
+
+    def test_add_to_cart_rejects_non_numeric_quantity(self) -> None:
+        response = self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": str(self.product.pk), "quantity": "abc"},
+        )
+        assert response.status_code == 400
+        assert "cart_Q1" not in self.client.session
+
+    def test_add_to_cart_rejects_non_positive_quantity(self) -> None:
+        response = self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": str(self.product.pk), "quantity": "0"},
+        )
+        assert response.status_code == 400
+
+    def test_add_to_cart_rejects_unavailable_product(self) -> None:
+        self.product.is_available = False
+        self.product.save()
+        response = self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": str(self.product.pk), "quantity": "1"},
+        )
+        assert response.status_code == 400
+
+    def test_add_to_cart_rejects_unknown_table(self) -> None:
+        response = self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "NOPE"}),
+            {"product_id": str(self.product.pk), "quantity": "1"},
+        )
+        assert response.status_code == 404
+
+    def test_remove_from_cart_drops_item(self) -> None:
+        self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": str(self.product.pk), "quantity": "2"},
+        )
+        response = self.client.post(
+            reverse("remove_from_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": str(self.product.pk)},
+        )
+        assert response.status_code == 200
+        assert self.client.session["cart_Q1"] == {}
+
+    def test_remove_from_cart_rejects_bad_uuid(self) -> None:
+        response = self.client.post(
+            reverse("remove_from_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": "nope"},
+        )
+        assert response.status_code == 400
+
+    # ── Checkout ────────────────────────────────────────────────────
+
+    def test_checkout_creates_qr_order_with_items(self) -> None:
+        self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": str(self.product.pk), "quantity": "2"},
+        )
+        response = self.client.post(
+            reverse("checkout_qr", kwargs={"table_code": "Q1"})
+        )
+        assert response.status_code == 200
+        order = Order.objects.get()
+        assert order.source == Order.Source.QR
+        assert order.table_id == self.table.pk
+        item = order.items.get()
+        assert item.quantity == 2
+        assert not self.client.session.get("cart_Q1")
+
+    def test_checkout_empties_cart(self) -> None:
+        self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": str(self.product.pk), "quantity": "1"},
+        )
+        self.client.post(reverse("checkout_qr", kwargs={"table_code": "Q1"}))
+        assert not self.client.session.get("cart_Q1")
+
+    def test_checkout_marks_table_occupied(self) -> None:
+        self.client.post(
+            reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+            {"product_id": str(self.product.pk), "quantity": "1"},
+        )
+        self.client.post(reverse("checkout_qr", kwargs={"table_code": "Q1"}))
+        self.table.refresh_from_db()
+        assert self.table.status == Table.Status.OCCUPIED
+
+    def test_checkout_reuses_open_qr_order(self) -> None:
+        for _ in range(2):
+            self.client.post(
+                reverse("add_to_cart", kwargs={"table_code": "Q1"}),
+                {"product_id": str(self.product.pk), "quantity": "1"},
+            )
+            self.client.post(reverse("checkout_qr", kwargs={"table_code": "Q1"}))
+        assert Order.objects.filter(source=Order.Source.QR).count() == 1
+        assert Order.objects.get().items.count() == 2
+
+    def test_checkout_without_cart_redirects(self) -> None:
+        response = self.client.post(
+            reverse("checkout_qr", kwargs={"table_code": "Q1"})
+        )
+        assert response.status_code == 302
+        assert not Order.objects.exists()
+
+    def test_checkout_requires_post(self) -> None:
+        response = self.client.get(
+            reverse("checkout_qr", kwargs={"table_code": "Q1"})
+        )
+        assert response.status_code == 405
+
+    # ── QRs para el personal ────────────────────────────────────────
+
+    def test_generate_qr_returns_png(self) -> None:
+        self.client.force_login(self.admin)
+        response = self.client.get(
+            reverse("generate_qr_table", kwargs={"table_code": "Q1"})
+        )
+        assert response.status_code == 200
+        assert response["Content-Type"] == "image/png"
+        assert response.content.startswith(b"\x89PNG")
+
+    def test_generate_qr_requires_login(self) -> None:
+        response = self.client.get(
+            reverse("generate_qr_table", kwargs={"table_code": "Q1"})
+        )
+        assert response.status_code == 302
+
+    def test_print_qr_tables_lists_table(self) -> None:
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("print_qr_tables"))
+        assert response.status_code == 200
+        assert b"Q1" in response.content
+
+
+class SplitEqualAPITests(TestCase):
+    """Regresiones del endpoint de división de cuentas."""
+
+    def setUp(self) -> None:
+        self.admin = User.objects.create_superuser(
+            email="split-equal-admin@test.com",
+            password="admin1234",
+            name="Admin",
+        )
+        self.token = AuthToken.create_token(self.admin)
+        self.cat = Category.objects.create(name="Food")
+        self.product = Product.objects.create(
+            category=self.cat, name="Pizza", price=Decimal("30000.00"),
+        )
+        self.table = Table.objects.create(code="SE1", capacity=4)
+        self.order = OrderService.create(table_id=self.table.pk, notes="")
+        self.item = OrderService.add_item(self.order.pk, self.product.pk, 3, "")
+        OrderService.checkout(self.order.pk)
+
+    def _post(self, payload: dict) -> dict:
+        response = self.client.post(
+            f"/api/orders/{self.order.pk}/splits",
+            data=json.dumps(payload),
+            content_type="application/json",
+            headers={"authorization": f"Bearer {self.token.key}"},
+        )
+        assert response.status_code == 201, response.content
+        return response.json()
+
+    def test_equal_split_without_explicit_method(self) -> None:
+        """El método 'equal' debe venir por defecto en el payload."""
+        splits = self._post({"n_splits": 3, "labels": ["A", "B", "C"]})
+        assert len(splits) == 3
+        assert {s["method"] for s in splits} == {"equal"}
+
+    def test_equal_split_amounts_sum_to_total(self) -> None:
+        splits = self._post({"n_splits": 3, "labels": ["A", "B", "C"]})
+        total = sum(Decimal(s["amount"]) for s in splits)
+        self.order.refresh_from_db()
+        assert total == self.order.total
+
+    def test_list_splits_returns_split_shape(self) -> None:
+        self._post({"n_splits": 2, "labels": ["A", "B"]})
+        response = self.client.get(
+            f"/api/orders/{self.order.pk}/splits",
+            headers={"authorization": f"Bearer {self.token.key}"},
+        )
+        assert response.status_code == 200
+        splits = response.json()
+        assert len(splits) == 2
+        for split in splits:
+            assert set(split) >= {
+                "id", "order_id", "label", "method", "amount", "items"
+            }
+            assert isinstance(split["items"], list)
+
+    def test_by_percentage_still_routes_correctly(self) -> None:
+        splits = self._post(
+            {
+                "method": "by_percentage",
+                "splits": [
+                    {"label": "A", "percentage": "60"},
+                    {"label": "B", "percentage": "40"},
+                ],
+            }
+        )
+        assert {s["method"] for s in splits} == {"by_percentage"}
+
+    def test_unknown_method_returns_400(self) -> None:
+        response = self.client.post(
+            f"/api/orders/{self.order.pk}/splits",
+            data=json.dumps(
+                {"method": "bogus", "splits": [{"label": "A", "items": []}]}
+            ),
+            content_type="application/json",
+            headers={"authorization": f"Bearer {self.token.key}"},
+        )
+        assert response.status_code == 400
+
+
+class OrderSourceTests(TestCase):
+    def setUp(self) -> None:
+        self.cat = Category.objects.create(name="Food")
+        self.product = Product.objects.create(
+            category=self.cat, name="Pizza", price=Decimal("10000.00"),
+        )
+
+    def test_create_defaults_to_pos_source(self) -> None:
+        order = OrderService.create(table_id=None, notes="")
+        assert order.source == Order.Source.POS
+
+    def test_create_accepts_qr_source(self) -> None:
+        order = OrderService.create(
+            table_id=None, notes="", source=Order.Source.QR
+        )
+        assert order.source == Order.Source.QR
+
+    def test_create_marks_table_occupied(self) -> None:
+        table = Table.objects.create(code="SRC1", capacity=4)
+        OrderService.create(table_id=table.pk, notes="")
+        table.refresh_from_db()
+        assert table.status == Table.Status.OCCUPIED
+
+    def test_create_from_items_is_atomic(self) -> None:
+        table = Table.objects.create(code="SRC2", capacity=4)
+        missing = uuid.uuid4()
+        with self.assertRaises(Http404):
+            OrderService.create_from_items(
+                table.pk, [(self.product.pk, 1), (missing, 1)]
+            )
+        assert not Order.objects.exists()
+
+    def test_create_from_items_reuses_open_order(self) -> None:
+        table = Table.objects.create(code="SRC3", capacity=4)
+        OrderService.create_from_items(table.pk, [(self.product.pk, 1)])
+        OrderService.create_from_items(table.pk, [(self.product.pk, 2)])
+        assert Order.objects.count() == 1
+        assert Order.objects.get().items.count() == 2

@@ -28,6 +28,7 @@ from gourmet.apps.inventory.views import (
     recipe_list,
     used_today,
 )
+from gourmet.apps.orders import views as order_views
 from gourmet.apps.orders.views import (
     add_payment,
     audit_logs,
@@ -37,7 +38,6 @@ from gourmet.apps.orders.views import (
     dashboard,
     floor_view,
     kitchen,
-    menu_public,
     order_detail,
     order_list,
     pos,
@@ -139,6 +139,32 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="pos_update_item_status",
     ),
     path("pos/audit-logs/", audit_logs, name="audit_logs"),
+    path(
+        "pos/qr/generate/<str:table_code>/",
+        order_views.generate_qr_table,
+        name="generate_qr_table",
+    ),
+    path("pos/qr/print/", order_views.print_qr_tables, name="print_qr_tables"),
+    path(
+        "menu/mesa/<str:table_code>/",
+        order_views.menu_public,
+        name="menu_public",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/add/",
+        order_views.add_to_cart,
+        name="add_to_cart",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/remove/",
+        order_views.remove_from_cart,
+        name="remove_from_cart",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/checkout/",
+        order_views.checkout_qr,
+        name="checkout_qr",
+    ),
     path("pos/reservations/", reservation_list, name="reservation_list"),
     path(
         "pos/reservations/calendar/",
@@ -170,5 +196,4 @@ urlpatterns: list[URLPattern | URLResolver] = [
         table_layout_delete,
         name="floor_layout_delete",
     ),
-    path("menu/", menu_public, name="menu_public"),
 ]

@@ -1,22 +1,83 @@
 {% extends "base.html" %}
 {% load currency %}
 {% block head_title %}Menú | Gourmet{% endblock %}
+
 {% block content %}
-<div style="padding: 20px; max-width: 800px; margin: 0 auto;">
-  <h1 style="margin-bottom: 24px;">Nuestro Menú</h1>
-  {% for category in categories %}
-    <h2 style="color: #333; margin: 20px 0 10px; border-bottom: 2px solid #dee2e6; padding-bottom: 4px;">{{ category.name }}</h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
-      {% for product in products %}
-        {% if product.category == category %}
-          <div style="border: 1px solid #dee2e6; border-radius: 8px; padding: 12px;">
-            <div style="font-weight: 600; font-size: 14px;">{{ product.name }}</div>
-            {% if product.description %}<div style="font-size: 12px; color: #666; margin: 4px 0;">{{ product.description }}</div>{% endif %}
-            <div style="font-size: 16px; font-weight: 700; color: #28a745;">{{ product.price|floatformat:2|peso }}</div>
-          </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-  {% endfor %}
-</div>
+  <div style="padding: 20px; max-width: 800px; margin: 0 auto; padding-bottom: 120px;">
+    <h1 style="margin-bottom: 4px;">Nuestro Menú</h1>
+    <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+      Mesa: <strong>{{ table.code }}</strong>
+    </p>
+
+    {% for category in categories %}
+      <h2
+        style="color: #333; margin: 24px 0 12px; border-bottom: 2px solid #dee2e6; padding-bottom: 4px;"
+      >
+        {{ category.name }}
+      </h2>
+      <div
+        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;"
+      >
+        {% for product in products %}
+          {% if product.category == category %}
+            <div
+              style="border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; background: #fff;"
+            >
+              <div>
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">
+                  {{ product.name }}
+                </div>
+                {% if product.description %}
+                  <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                    {{ product.description }}
+                  </div>
+                {% endif %}
+              </div>
+
+              <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 8px; border-top: 1px dashed #f0f0f0;"
+              >
+                <div style="font-size: 16px; font-weight: 700; color: #28a745;">
+                  {{ product.price|floatformat:2|peso }}
+                </div>
+
+                <form
+                  method="post"
+                  action="{% url 'add_to_cart' table_code %}"
+                  style="display: flex; gap: 6px; align-items: center; margin: 0;"
+                >
+                  {% csrf_token %}
+                  <input
+                    type="hidden"
+                    name="product_id"
+                    value="{{ product.pk }}"
+                  />
+                  <input
+                    type="number"
+                    name="quantity"
+                    value="1"
+                    min="1"
+                    max="20"
+                    style="width: 48px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-size: 13px;"
+                  />
+                  <button
+                    type="submit"
+                    hx-post="{% url 'add_to_cart' table_code %}"
+                    hx-target="#cart-summary"
+                    hx-swap="outerHTML"
+                    style="background: #007bff; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; border-radius: 4px;"
+                  >
+                    + Agregar
+                  </button>
+                </form>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Carrito flotante -->
+  {% include "pos/_cart_summary.html" %}
 {% endblock %}

@@ -10,6 +10,7 @@
     />
   </head>
   <body>
+
     <nav style="padding: 10px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
         <a href="{% url 'index' %}" style="font-weight: bold; text-decoration: none; color: #333; font-size: 16px;">Gourmet</a>
         {% if user.is_authenticated %}
@@ -22,6 +23,7 @@
                 <a href="{% url 'order_list' %}" style="color:#28a745;text-decoration:none;font-size:13px;">📋 Órdenes</a>
                 <a href="{% url 'floor_view' %}" style="color:#20c997;text-decoration:none;font-size:13px;">🗺 Piso</a>
                 <a href="{% url 'reservation_calendar' %}" style="color:#6f42c1;text-decoration:none;font-size:13px;">📅 Reservas</a>
+                <a href="{% url 'print_qr_tables' %}" style="color:#fd7e14;text-decoration:none;font-size:13px;">📱 Generar QRs</a>
                 {% if user.is_superuser or user.role.name == 'admin' %}
                     <a href="{% url 'dashboard' %}" style="color:#ffc107;text-decoration:none;font-size:13px;">📊 Dashboard</a>
                     <a href="{% url 'inventory_list' %}" style="color:#6c757d;text-decoration:none;font-size:13px;">📦 Inventario</a>
@@ -36,21 +38,25 @@
             </div>
         {% else %}
             <div style="margin-left: auto;">
-                <a href="{% url 'menu_public' %}" style="color:#28a745;text-decoration:none;font-size:13px;">📋 Menú</a>
                 <a href="{% url 'login' %}" style="color:#007bff;text-decoration:none;font-size:13px;margin-left:8px;">Iniciar Sesión</a>
             </div>
+
         {% endif %}
     </nav>
     <div id="container">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}" style="padding: 10px; margin-bottom: 10px; border-radius: 4px; background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460;">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-        
-        {% block content %}{% endblock %}
+      {% if messages %}
+        {% for message in messages %}
+          <div
+            class="alert alert-{{ message.tags }}"
+            style="padding: 10px; margin-bottom: 10px; border-radius: 4px; background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460;"
+          >
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% block content %}
+      {% endblock %}
     </div>
     <script src="{% static 'vendor/htmx.min.js' %}"></script>
     <script

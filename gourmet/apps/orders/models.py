@@ -18,6 +18,10 @@ class Order(models.Model):
         CLOSED = "closed", "Closed"
         CANCELLED = "cancelled", "Cancelled"
 
+    class Source(models.TextChoices):
+        POS = "pos", "POS (Mesero)"
+        QR = "qr", "Autogestión (QR Cliente)"
+
     id: models.UUIDField[uuid.UUID, uuid.UUID] = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False
     )
@@ -37,6 +41,13 @@ class Order(models.Model):
         default=Status.OPEN,
         db_index=True,
     )
+    source: models.CharField[str, str] = models.CharField(
+        max_length=16,
+        choices=Source.choices,
+        default=Source.POS,
+        db_index=True,
+        verbose_name="Order source",
+    )
     subtotal: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
@@ -46,9 +57,7 @@ class Order(models.Model):
     discount_amount: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
-    notes: models.TextField[str, str] = models.TextField(
-        blank=True, default=""
-    )
+    notes: models.TextField[str, str] = models.TextField(blank=True, default="")
     created_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now_add=True)
     updated_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now=True)
     closed_at: models.DateTimeField[Any, Any] = models.DateTimeField(
@@ -95,18 +104,14 @@ class OrderItem(models.Model):
     quantity: models.PositiveSmallIntegerField[int, int] = (
         models.PositiveSmallIntegerField(default=1)
     )
-    notes: models.TextField[str, str] = models.TextField(
-        blank=True, default=""
-    )
+    notes: models.TextField[str, str] = models.TextField(blank=True, default="")
     status: models.CharField[str, str] = models.CharField(
         max_length=16,
         choices=Status.choices,
         default=Status.PENDING,
         db_index=True,
     )
-    priority: models.SmallIntegerField[int, int] = models.SmallIntegerField(
-        default=0
-    )
+    priority: models.SmallIntegerField[int, int] = models.SmallIntegerField(default=0)
     started_at: models.DateTimeField[Any, Any] = models.DateTimeField(
         null=True, blank=True
     )
@@ -142,9 +147,7 @@ class Payment(models.Model):
     method: models.CharField[str, str] = models.CharField(
         max_length=16, choices=Method.choices
     )
-    reference: models.CharField[str, str] = models.CharField(
-        max_length=100, blank=True
-    )
+    reference: models.CharField[str, str] = models.CharField(max_length=100, blank=True)
     created_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -172,11 +175,11 @@ class Invoice(models.Model):
     )
     xml: models.TextField[str, str] = models.TextField(blank=True, default="")
     status: models.CharField[str, str] = models.CharField(
-        max_length=16, choices=Status.choices, default=Status.PENDING,
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
     )
-    dian_response: models.TextField[str, str] = models.TextField(
-        blank=True, default=""
-    )
+    dian_response: models.TextField[str, str] = models.TextField(blank=True, default="")
     created_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now_add=True)
     updated_at: models.DateTimeField[Any, Any] = models.DateTimeField(auto_now=True)
 
@@ -254,10 +257,8 @@ class DailyClose(models.Model):
     cash_opening: models.DecimalField[Decimal, Decimal] = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
-    cash_counted: models.DecimalField[
-        Decimal | None, Decimal | None
-    ] = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
+    cash_counted: models.DecimalField[Decimal | None, Decimal | None] = (
+        models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     )
 
     class Meta:

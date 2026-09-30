@@ -37,7 +37,7 @@ class OrderService:
         ).select_related("table")
 
     @staticmethod
-    def list(status: str | None = None) -> QuerySet[Order]:
+    def list_orders(status: str | None = None) -> QuerySet[Order]:
         qs = OrderService._order_queryset()
         if status:
             qs = qs.filter(status=status)
@@ -54,8 +54,11 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def create(
-        table_id: UUID | None, notes: str,
-        customer_name: str = "", discount_amount: Decimal | None = None,
+        table_id: UUID | None = None,
+        notes: str = "",
+        customer_name: str = "",
+        discount_amount: Decimal = Decimal("0.00"),
+        source: str = Order.Source.POS,
     ) -> Order:
         if table_id:
             Table.objects.filter(pk=table_id, is_active=True).update(
@@ -63,15 +66,45 @@ class OrderService:
             )
         return Order.objects.create(
             table_id=table_id,
-            notes=notes,
             customer_name=customer_name,
-            discount_amount=discount_amount or Decimal("0.00"),
+            notes=notes,
+            discount_amount=discount_amount,
+            source=source,
         )
 
     @staticmethod
     @transaction.atomic
+    def create_from_items(
+        table_id: UUID,
+        items: list[tuple[UUID, int]],
+        notes: str = "",
+        source: str = Order.Source.POS,
+    ) -> Order:
+        """Create an order with its items in a single transaction.
+
+        Reuses an already open order for the same table so repeated QR
+        checkouts do not pile up open orders.
+        """
+        order = Order.objects.filter(
+            table_id=table_id,
+            status=Order.Status.OPEN,
+            source=source,
+        ).first()
+        if order is None:
+            order = OrderService.create(
+                table_id=table_id, notes=notes, source=source
+            )
+        for product_id, quantity in items:
+            OrderService.add_item(order.pk, product_id, quantity, "")
+        return OrderService.checkout(order.pk)
+
+    @staticmethod
+    @transaction.atomic
     def add_item(
-        order_id: UUID, product_id: UUID, quantity: int, notes: str,
+        order_id: UUID,
+        product_id: UUID,
+        quantity: int,
+        notes: str,
         discount_percent: Decimal | None = None,
     ) -> OrderItem:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
@@ -91,7 +124,10 @@ class OrderService:
 
     @staticmethod
     def update_item(
-        order_id: UUID, item_id: UUID, quantity: int | None, notes: str | None,
+        order_id: UUID,
+        item_id: UUID,
+        quantity: int | None,
+        notes: str | None,
         status: str | None,
     ) -> OrderItem:
         item = get_object_or_404(
@@ -145,14 +181,20 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def pay(
-        order_id: UUID, method: str, amount: Decimal, reference: str,
+        order_id: UUID,
+        method: str,
+        amount: Decimal,
+        reference: str,
         tip: Decimal | None = None,
     ) -> Payment:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
         if amount <= 0:
             raise ValueError("Payment amount must be positive")
         payment = Payment.objects.create(
-            order=order, method=method, amount=amount, reference=reference,
+            order=order,
+            method=method,
+            amount=amount,
+            reference=reference,
             tip=tip or Decimal("0.00"),
         )
         return payment
@@ -162,7 +204,9 @@ class OrderService:
     def close(order_id: UUID) -> Order:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
         if order.table_id:
-            Table.objects.filter(pk=order.table_id).update(status=Table.Status.AVAILABLE)
+            Table.objects.filter(pk=order.table_id).update(
+                status=Table.Status.AVAILABLE
+            )
         order.status = Order.Status.CLOSED
         order.closed_at = timezone.now()
         order.save(update_fields=["status", "closed_at"])
@@ -195,14 +239,17 @@ class OrderService:
         order.closed_at = timezone.now()
         order.save(update_fields=["status", "closed_at"])
         items = OrderItem.objects.filter(
-            order=order, status=OrderItem.Status.PENDING,
+            order=order,
+            status=OrderItem.Status.PENDING,
         )
         for item in items:
             if item.product_id:
                 OrderService._reverse_inventory(item.product_id, item.quantity)
         items.update(status=OrderItem.Status.CANCELLED)
         if order.table_id:
-            Table.objects.filter(pk=order.table_id).update(status=Table.Status.AVAILABLE)
+            Table.objects.filter(pk=order.table_id).update(
+                status=Table.Status.AVAILABLE
+            )
         return OrderService.get(order.pk)
 
     @staticmethod
@@ -220,7 +267,9 @@ class OrderService:
     @transaction.atomic
     def set_item_status(order_id: UUID, item_id: UUID, status: str) -> OrderItem:
         item = get_object_or_404(
-            OrderItem, pk=item_id, order_id=order_id,
+            OrderItem,
+            pk=item_id,
+            order_id=order_id,
             status__in=(
                 OrderItem.Status.PENDING,
                 OrderItem.Status.PREPARING,
@@ -299,7 +348,9 @@ class OrderService:
             else:
                 logger.warning(
                     "Insufficient stock for %s: have %s, need %s",
-                    item.name, item.stock, needed,
+                    item.name,
+                    item.stock,
+                    needed,
                 )
 
     @staticmethod
@@ -331,18 +382,27 @@ class OrderService:
         )
         items_by_id: dict[UUID, OrderItem] = {i.pk: i for i in items_qs}
 
-        # Validate all order_item_ids belong to this order
+        # Callers may pass UUIDs or their string form; normalise before lookups.
+        normalized: list[tuple[str, list[tuple[UUID, int]]]] = []
         for split_data in splits_data:
+            items: list[tuple[UUID, int]] = []
             for item_data in split_data["items"]:
                 oi_id = item_data["order_item_id"]
+                if not isinstance(oi_id, UUID):
+                    try:
+                        oi_id = UUID(str(oi_id))
+                    except (TypeError, ValueError) as e:
+                        raise ValueError(f"Invalid order item id: {oi_id}") from e
                 if oi_id not in items_by_id:
                     raise ValueError(f"Order item {oi_id} not found in order")
+                items.append((oi_id, item_data["quantity"]))
+            normalized.append((split_data["label"], items))
 
         # Accumulate quantities across splits per order item
         allocated: dict[UUID, int] = defaultdict(int)
-        for split_data in splits_data:
-            for item_data in split_data["items"]:
-                allocated[item_data["order_item_id"]] += item_data["quantity"]
+        for _, items in normalized:
+            for oi_id, quantity in items:
+                allocated[oi_id] += quantity
 
         # Validate total quantities don't exceed order item quantities
         for oi_id, total_qty in allocated.items():
@@ -355,21 +415,21 @@ class OrderService:
                 )
 
         splits: list[BillSplit] = []
-        for split_data in splits_data:
+        for label, items in normalized:
             split = BillSplit.objects.create(
                 order=order,
-                label=split_data["label"],
+                label=label,
                 method=BillSplit.Method.BY_ITEMS,
             )
             amount = Decimal("0.00")
-            for item_data in split_data["items"]:
-                order_item = items_by_id[item_data["order_item_id"]]
+            for oi_id, quantity in items:
+                order_item = items_by_id[oi_id]
                 BillSplitItem.objects.create(
                     split=split,
                     order_item=order_item,
-                    quantity=item_data["quantity"],
+                    quantity=quantity,
                 )
-                line_total = order_item.product_price * item_data["quantity"]
+                line_total = order_item.product_price * quantity
                 disc_pct = order_item.discount_percent / Decimal("100")
                 discount_amt = line_total * disc_pct
                 line_after = line_total - discount_amt

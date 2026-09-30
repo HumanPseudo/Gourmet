@@ -37,22 +37,36 @@ class Command(BaseCommand):
             admin.set_password("admin")
             admin.save()
 
-        # ── Tables ────────────────────────────────────────────────────
+        # Mesas
         tables_data = [
-            ("Mesa 1", 2), ("Mesa 2", 4), ("Mesa 3", 4), ("Mesa 4", 6),
-            ("Mesa 5", 8), ("Barra", 1), ("Terraza 1", 4), ("Terraza 2", 4),
+            ("Mesa 1", 2),
+            ("Mesa 2", 4),
+            ("Mesa 3", 4),
+            ("Mesa 4", 6),
+            ("Mesa 5", 8),
+            ("Barra", 1),
+            ("Terraza 1", 4),
+            ("Terraza 2", 4),
             ("VIP", 12),
         ]
         for code, capacity in tables_data:
             Table.objects.get_or_create(code=code, defaults={"capacity": capacity})
 
-        # ── Categories ────────────────────────────────────────────────
-        cat_bebidas, _ = Category.objects.get_or_create(name="Bebidas", defaults={"sort_order": 1})
-        cat_comidas, _ = Category.objects.get_or_create(name="Comidas", defaults={"sort_order": 2})
-        cat_postres, _ = Category.objects.get_or_create(name="Postres", defaults={"sort_order": 3})
-        cat_entradas, _ = Category.objects.get_or_create(name="Entradas", defaults={"sort_order": 0})
+        # Categorías
+        cat_bebidas, _ = Category.objects.get_or_create(
+            name="Bebidas", defaults={"sort_order": 1}
+        )
+        cat_comidas, _ = Category.objects.get_or_create(
+            name="Comidas", defaults={"sort_order": 2}
+        )
+        cat_postres, _ = Category.objects.get_or_create(
+            name="Postres", defaults={"sort_order": 3}
+        )
+        cat_entradas, _ = Category.objects.get_or_create(
+            name="Entradas", defaults={"sort_order": 0}
+        )
 
-        # ── Products (COP prices) ─────────────────────────────────────
+        # Productos (COP)
         products_data = [
             (cat_entradas, "Ceviche", 18500, "INC_8"),
             (cat_entradas, "Empanadas (x3)", 8500, "INC_8"),
@@ -66,13 +80,9 @@ class Command(BaseCommand):
             (cat_comidas, "Ensalada Caesar", 14000, "EXENTO"),
             (cat_comidas, "Papas Fritas", 8500, "INC_8"),
             (cat_comidas, "Arroz con Pollo", 16500, "INC_8"),
-            (cat_bebidas, "Coca Cola personal", 3500, "IVA_19"),
-            (cat_bebidas, "Coca Cola litro", 6500, "IVA_19"),
-            (cat_bebidas, "Agua Cristal", 2500, "IVA_19"),
+            (cat_bebidas, "Agua Mineral", 2500, "IVA_19"),
             (cat_bebidas, "Jugo Natural de Naranja", 7000, "EXENTO"),
             (cat_bebidas, "Limonada", 5000, "EXENTO"),
-            (cat_bebidas, "Cerveza Águila", 4500, "IVA_19"),
-            (cat_bebidas, "Cerveza Club Colombia", 5500, "IVA_19"),
             (cat_postres, "Flan Napolitano", 9500, "INC_8"),
             (cat_postres, "Tres Leches", 8500, "EXENTO"),
             (cat_postres, "Helado (2 bolas)", 6500, "INC_8"),
@@ -81,11 +91,16 @@ class Command(BaseCommand):
         for cat, name, price, tax_type in products_data:
             p, _ = Product.objects.get_or_create(
                 name=name,
-                defaults={"category": cat, "price": Decimal(str(price)), "tax_type": tax_type, "is_available": True},
+                defaults={
+                    "category": cat,
+                    "price": Decimal(str(price)),
+                    "tax_type": tax_type,
+                    "is_available": True,
+                },
             )
             prods[name] = p
 
-        # ── Inventory items ───────────────────────────────────────────
+        # Inventario
         inv_data = {
             "Carne de res (kg)": (15, 2, 28000),
             "Pan de hamburguesa": (40, 10, 1200),
@@ -101,13 +116,8 @@ class Command(BaseCommand):
             "Tomate (kg)": (6, 1, 3500),
             "Cebolla (kg)": (8, 2, 2000),
             "Aceite de cocina (litro)": (10, 2, 6000),
-            "Coca Cola personal botella": (48, 12, 2000),
-            "Coca Cola litro botella": (24, 6, 3500),
-            "Agua Cristal botella": (36, 12, 1200),
             "Naranja (kg)": (10, 3, 3000),
             "Limón (kg)": (5, 1, 4000),
-            "Cerveza Águila": (36, 12, 2500),
-            "Cerveza Club Colombia": (24, 6, 3000),
             "Leche condensada (lata)": (10, 2, 4500),
             "Panela (kg)": (3, 1, 3500),
             "Crema de leche (litro)": (5, 1, 6500),
@@ -128,25 +138,58 @@ class Command(BaseCommand):
             )
             inv_items[name] = item
 
-        # ── Recipes ───────────────────────────────────────────────────
+        # Recetas
         recipes: list[tuple[str, list[tuple[str, int | float]]]] = [
-            ("Hamburguesa Clásica", [("Pan de hamburguesa", 1), ("Carne de res (kg)", 0.15), ("Lechuga (kg)", 0.03), ("Tomate (kg)", 0.04), ("Cebolla (kg)", 0.02)]),
-            ("Hamburguesa BBQ", [("Pan de hamburguesa", 1), ("Carne de res (kg)", 0.18), ("Tocineta (kg)", 0.04), ("Lechuga (kg)", 0.03), ("Tomate (kg)", 0.04), ("Cebolla (kg)", 0.02)]),
+            (
+                "Hamburguesa Clásica",
+                [
+                    ("Pan de hamburguesa", 1),
+                    ("Carne de res (kg)", 0.15),
+                    ("Lechuga (kg)", 0.03),
+                    ("Tomate (kg)", 0.04),
+                    ("Cebolla (kg)", 0.02),
+                ],
+            ),
+            (
+                "Hamburguesa BBQ",
+                [
+                    ("Pan de hamburguesa", 1),
+                    ("Carne de res (kg)", 0.18),
+                    ("Tocineta (kg)", 0.04),
+                    ("Lechuga (kg)", 0.03),
+                    ("Tomate (kg)", 0.04),
+                    ("Cebolla (kg)", 0.02),
+                ],
+            ),
             ("Pizza Personal", [("Masa de pizza", 1), ("Queso mozzarella (kg)", 0.15)]),
             ("Pizza Familiar", [("Masa de pizza", 2), ("Queso mozzarella (kg)", 0.3)]),
-            ("Bandeja Paisa", [("Arroz (kg)", 0.2), ("Frijol (kg)", 0.15), ("Carne de res (kg)", 0.2), ("Plátano verde (kg)", 0.1), ("Huevos (unidad)", 1)]),
-            ("Ajiaco", [("Papa (kg)", 0.25), ("Pechuga de pollo (kg)", 0.15), ("Crema de leche (litro)", 0.05)]),
+            (
+                "Bandeja Paisa",
+                [
+                    ("Arroz (kg)", 0.2),
+                    ("Frijol (kg)", 0.15),
+                    ("Carne de res (kg)", 0.2),
+                    ("Plátano verde (kg)", 0.1),
+                    ("Huevos (unidad)", 1),
+                ],
+            ),
+            (
+                "Ajiaco",
+                [
+                    ("Papa (kg)", 0.25),
+                    ("Pechuga de pollo (kg)", 0.15),
+                    ("Crema de leche (litro)", 0.05),
+                ],
+            ),
             ("Ensalada Caesar", [("Lechuga (kg)", 0.15), ("Tomate (kg)", 0.05)]),
             ("Papas Fritas", [("Papa (kg)", 0.3), ("Aceite de cocina (litro)", 0.02)]),
             ("Arroz con Pollo", [("Arroz (kg)", 0.2), ("Pechuga de pollo (kg)", 0.15)]),
-            ("Coca Cola personal", [("Coca Cola personal botella", 1)]),
-            ("Coca Cola litro", [("Coca Cola litro botella", 1)]),
-            ("Agua Cristal", [("Agua Cristal botella", 1)]),
             ("Jugo Natural de Naranja", [("Naranja (kg)", 0.4)]),
             ("Limonada", [("Limón (kg)", 0.15)]),
-            ("Cerveza Águila", [("Cerveza Águila", 1)]),
-            ("Cerveza Club Colombia", [("Cerveza Club Colombia", 1)]),
-            ("Tres Leches", [("Leche condensada (lata)", 0.5), ("Crema de leche (litro)", 0.1)]),
+            (
+                "Tres Leches",
+                [("Leche condensada (lata)", 0.5), ("Crema de leche (litro)", 0.1)],
+            ),
             ("Helado (2 bolas)", [("Helado (kg)", 0.15)]),
         ]
         for prod_name, ingredients in recipes:
@@ -166,7 +209,9 @@ class Command(BaseCommand):
         tomorrow = today_start + timedelta(days=1)
 
         # cleanup previous seed for today
-        Order.objects.filter(created_at__gte=today_start, created_at__lt=tomorrow).delete()
+        Order.objects.filter(
+            created_at__gte=today_start, created_at__lt=tomorrow
+        ).delete()
         DailyClose.objects.filter(closed_at__gte=today_start).delete()
         for m in InventoryMovement.objects.filter(
             reference__in=["order:auto", "cocina:preparado"],
@@ -182,7 +227,8 @@ class Command(BaseCommand):
         def make(table_code, notes, items, paid=False, customer_name=""):
             t = tables.get(table_code or "")
             order = OrderService.create(
-                table_id=t.pk if t else None, notes=notes,
+                table_id=t.pk if t else None,
+                notes=notes,
                 customer_name=customer_name,
             )
             for name, qty in items:
@@ -195,31 +241,125 @@ class Command(BaseCommand):
                 OrderService.close(order.pk)
             return order
 
-        o1 = make("Mesa 1", "Sin cebolla", [("Hamburguesa Clásica", 2), ("Coca Cola personal", 2), ("Papas Fritas", 1)], paid=True, customer_name="Carlos")
-        Order.objects.filter(pk=o1.pk).update(created_at=today_start + timedelta(hours=10))
-        Order.objects.filter(pk=o1.pk).update(closed_at=today_start + timedelta(hours=11))
+        o1 = make(
+            "Mesa 1",
+            "Sin cebolla",
+            [
+                ("Hamburguesa Clásica", 2),
+                ("Gaseosa personal", 2),
+                ("Papas Fritas", 1),
+            ],
+            paid=True,
+            customer_name="Carlos",
+        )
+        Order.objects.filter(pk=o1.pk).update(
+            created_at=today_start + timedelta(hours=10)
+        )
+        Order.objects.filter(pk=o1.pk).update(
+            closed_at=today_start + timedelta(hours=11)
+        )
 
-        o2 = make("Mesa 2", "", [("Pizza Personal", 1), ("Agua Cristal", 2), ("Limonada", 1)], paid=True, customer_name="Ana")
-        Order.objects.filter(pk=o2.pk).update(created_at=today_start + timedelta(hours=11))
-        Order.objects.filter(pk=o2.pk).update(closed_at=today_start + timedelta(hours=11, minutes=45))
+        o2 = make(
+            "Mesa 2",
+            "",
+            [("Pizza Personal", 1), ("Agua Cristal", 2), ("Limonada", 1)],
+            paid=True,
+            customer_name="Ana",
+        )
+        Order.objects.filter(pk=o2.pk).update(
+            created_at=today_start + timedelta(hours=11)
+        )
+        Order.objects.filter(pk=o2.pk).update(
+            closed_at=today_start + timedelta(hours=11, minutes=45)
+        )
 
-        o3 = make("Mesa 3", "Cumpleaños — traer vela", [("Pizza Familiar", 1), ("Coca Cola litro", 2), ("Helado (2 bolas)", 4), ("Tres Leches", 1)], paid=True, customer_name="Familia Pérez")
-        Order.objects.filter(pk=o3.pk).update(created_at=today_start + timedelta(hours=12))
-        Order.objects.filter(pk=o3.pk).update(closed_at=today_start + timedelta(hours=13, minutes=30))
+        o3 = make(
+            "Mesa 3",
+            "Cumpleaños — traer vela",
+            [
+                ("Pizza Familiar", 1),
+                ("Gaseosa litro", 2),
+                ("Helado (2 bolas)", 4),
+                ("Tres Leches", 1),
+            ],
+            paid=True,
+            customer_name="Familia Pérez",
+        )
+        Order.objects.filter(pk=o3.pk).update(
+            created_at=today_start + timedelta(hours=12)
+        )
+        Order.objects.filter(pk=o3.pk).update(
+            closed_at=today_start + timedelta(hours=13, minutes=30)
+        )
 
-        o4 = make("Mesa 4", "", [("Bandeja Paisa", 2), ("Ajiaco", 1), ("Limonada", 3)], customer_name="Pedro")
-        Order.objects.filter(pk=o4.pk).update(created_at=today_start + timedelta(hours=13))
-        o5 = make("Barra", "Para llevar", [("Ensalada Caesar", 1), ("Jugo Natural de Naranja", 2), ("Empanadas (x3)", 2)], customer_name="Llevar")
-        Order.objects.filter(pk=o5.pk).update(created_at=today_start + timedelta(hours=14))
-        o6 = make("Mesa 5", "", [("Hamburguesa BBQ", 3), ("Cerveza Club Colombia", 3)], customer_name="Juan")
-        Order.objects.filter(pk=o6.pk).update(created_at=today_start + timedelta(hours=14, minutes=30))
-        o7 = make("Terraza 1", "", [("Ceviche", 2), ("Arroz con Pollo", 2), ("Coca Cola litro", 1), ("Cerveza Águila", 2)], paid=True)
-        Order.objects.filter(pk=o7.pk).update(created_at=today_start + timedelta(hours=12, minutes=30))
-        Order.objects.filter(pk=o7.pk).update(closed_at=today_start + timedelta(hours=14))
-        o8 = make("VIP", "Reserva especial", [("Bandeja Paisa", 4), ("Ajiaco", 2), ("Ceviche", 3), ("Coca Cola litro", 4), ("Cerveza Club Colombia", 6), ("Tres Leches", 3)], customer_name="Empresa XYZ")
-        Order.objects.filter(pk=o8.pk).update(created_at=today_start + timedelta(hours=13, minutes=30))
+        o4 = make(
+            "Mesa 4",
+            "",
+            [("Bandeja Paisa", 2), ("Ajiaco", 1), ("Limonada", 3)],
+            customer_name="Pedro",
+        )
+        Order.objects.filter(pk=o4.pk).update(
+            created_at=today_start + timedelta(hours=13)
+        )
+        o5 = make(
+            "Barra",
+            "Para llevar",
+            [
+                ("Ensalada Caesar", 1),
+                ("Jugo Natural de Naranja", 2),
+                ("Empanadas (x3)", 2),
+            ],
+            customer_name="Llevar",
+        )
+        Order.objects.filter(pk=o5.pk).update(
+            created_at=today_start + timedelta(hours=14)
+        )
+        o6 = make(
+            "Mesa 5",
+            "",
+            [("Hamburguesa BBQ", 3), ("Cerveza artesanal", 3)],
+            customer_name="Juan",
+        )
+        Order.objects.filter(pk=o6.pk).update(
+            created_at=today_start + timedelta(hours=14, minutes=30)
+        )
+        o7 = make(
+            "Terraza 1",
+            "",
+            [
+                ("Ceviche", 2),
+                ("Arroz con Pollo", 2),
+                ("Gaseosa litro", 1),
+                ("Cerveza clara", 2),
+            ],
+            paid=True,
+        )
+        Order.objects.filter(pk=o7.pk).update(
+            created_at=today_start + timedelta(hours=12, minutes=30)
+        )
+        Order.objects.filter(pk=o7.pk).update(
+            closed_at=today_start + timedelta(hours=14)
+        )
+        o8 = make(
+            "VIP",
+            "Reserva especial",
+            [
+                ("Bandeja Paisa", 4),
+                ("Ajiaco", 2),
+                ("Ceviche", 3),
+                ("Gaseosa litro", 4),
+                ("Cerveza artesanal", 6),
+                ("Tres Leches", 3),
+            ],
+            customer_name="Empresa XYZ",
+        )
+        Order.objects.filter(pk=o8.pk).update(
+            created_at=today_start + timedelta(hours=13, minutes=30)
+        )
 
-        Order.objects.filter(pk=o8.pk).update(notes="Reserva especial — Empresa XYZ (12 personas)")
+        Order.objects.filter(pk=o8.pk).update(
+            notes="Reserva especial — Empresa XYZ (12 personas)"
+        )
 
         items_o4 = list(OrderItem.objects.filter(order=o4).order_by("created_at"))
         for i, item in enumerate(items_o4):

@@ -20,7 +20,7 @@ dev = [
   "types-requests==2.33.0.20260408",
 ]
 prod = [
-    "gunicorn==25.3.0",
+  "gunicorn==25.3.0",
 ]
 
 [project]
@@ -34,6 +34,7 @@ dependencies = [
   "gunicorn==25.3.0",
   "psycopg==3.3.3",
   "python-json-logger==4.1.0",
+  "qrcode[pil]==8.2",
   "requests==2.33.1",
   "sentry-sdk==2.58.0",
   "whitenoise==6.12.0",
@@ -69,6 +70,11 @@ source = ["gourmet", "tests"]
 [tool.django-stubs]
 django_settings_module = "gourmet.settings"
 
+[tool.djlint]
+ignore = "H006,H030,H031"
+indent = 2
+profile = "django"
+
 [tool.mypy]
 plugins = ["mypy_django_plugin.main"]
 
@@ -81,7 +87,6 @@ module = [
 ]
 
 [tool.pytest.ini_options]
-python_files = ["test_*.py", "*_test.py", "tests.py"]
 addopts = [
   "--allow-hosts=127.0.0.1,localhost",
   "--ds=gourmet.settings",
@@ -94,6 +99,7 @@ addopts = [
 markers = [
   "server_env(env_dict): Pass environment variables to server fixture",
 ]
+python_files = ["test_*.py", "*_test.py", "tests.py"]
 
 [tool.pytest_env]
 DEBUG = 0
@@ -111,28 +117,23 @@ ignore = [
   "ARG001",  # Unused function argument (request, ...)
   "ARG002",  # Unused method argument (*args, **kwargs)
   "COM812",  # Check absence of trailing commas. Made redundant by formatter.
-  "D",       # Missing or badly formatted docstrings
-  "FBT",     # Flake Boolean Trap (don't use arg=True in functions)
-  "PLR2004", # Allow "magic values" (e.g. status_code == 302)
+  "D",  # Missing or badly formatted docstrings
+  "FBT",  # Flake Boolean Trap (don't use arg=True in functions)
+  "PLR2004",  # Allow "magic values" (e.g. status_code == 302)
   "RUF012",  # Mutable class attributes
-  "DJ001",   # Avoid nullable CharField/TextField
+  "DJ001",  # Avoid nullable CharField/TextField
 ]
 select = [
-  "E",   # pycodestyle errors
-  "W",   # pycodestyle warnings
-  "F",   # pyflakes
-  "I",   # isort
-  "B",   # flake8-bugbear
+  "E",  # pycodestyle errors
+  "W",  # pycodestyle warnings
+  "F",  # pyflakes
+  "I",  # isort
+  "B",  # flake8-bugbear
   "C4",  # flake8-comprehensions
   "UP",  # pyupgrade
   "DJ",  # flake8-django
-  "T20", # flake8-print
+  "T20",  # flake8-print
 ]
-
-[tool.djlint]
-ignore = "H006,H030,H031"
-indent = 2
-profile = "django"
 
 [tool.ruff.lint.extend-per-file-ignores]
 "**/migrations/*" = [
