@@ -15,6 +15,7 @@ Including another URLconf
 """
 
 from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import URLPattern, URLResolver, include, path
 from django.views.generic import TemplateView
@@ -178,9 +179,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     ),
     path("pos/floor/", floor_view, name="floor_view"),
     path("pos/floor/layouts/", table_layout_list, name="floor_layout_list"),
-    path(
-        "pos/floor/layouts/new/", table_layout_create, name="floor_layout_create"
-    ),
+    path("pos/floor/layouts/new/", table_layout_create, name="floor_layout_create"),
     path(
         "pos/floor/layouts/<uuid:layout_id>/",
         table_layout_edit,
@@ -197,3 +196,6 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="floor_layout_delete",
     ),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -115,6 +115,45 @@ class Config(GoodConf):
         description="Business NIT shown on receipts",
     )
 
+    # === Menu Images Storage (Supabase S3-compatible) ===
+    MENU_IMAGE_BASE_URL: str = Field(
+        default="/media/menu/",
+        description=(
+            "Base URL for menu images. In dev: /media/menu/. "
+            "In prod: https://<project>.supabase.co/storage/v1/object/public/<bucket>/"
+        ),
+    )
+    SUPABASE_STORAGE_ENDPOINT: str = Field(
+        default="https://jnximziycwmcauyfilmy.supabase.co/storage/v1/s3",
+        description=(
+            "Supabase S3-compatible endpoint, e.g. "
+            "https://jnximziycwmcauyfilmy.supabase.co/storage/v1/s3"
+        ),
+    )
+    SUPABASE_STORAGE_REGION: str = Field(
+        default="ca-central-1",
+        description="Region for Supabase S3 storage (e.g. us-east-1)",
+    )
+    SUPABASE_STORAGE_ACCESS_KEY: str = Field(
+        default="7d328887509450ccc3102af3e2a70fb7",
+        description="Supabase S3 access key",
+    )
+    SUPABASE_STORAGE_SECRET_KEY: str = Field(
+        default="e7af7f4de54cf69ee50423dd21c900b6047e22c044a44bebf4af4c39178eae82",
+        description="Supabase S3 secret key",
+    )
+    SUPABASE_STORAGE_BUCKET: str = Field(
+        default="Gourmet",
+        description="Bucket name for menu images in Supabase",
+    )
+    SUPABASE_STORAGE_PUBLIC_URL: str = Field(
+        default="https://jnximziycwmcauyfilmy.supabase.co/storage/v1/object/public/menu-images/",
+        description=(
+            "Public base URL for served images, e.g. "
+            "https://jnximziycwmcauyfilmy.supabase.co/storage/v1/object/public/menu-images/"
+        ),
+    )
+
     model_config = {"default_files": ["gourmet.yml"]}
 
 

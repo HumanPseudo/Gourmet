@@ -3,81 +3,100 @@
 {% block head_title %}Menú | Gourmet{% endblock %}
 
 {% block content %}
-  <div style="padding: 20px; max-width: 800px; margin: 0 auto; padding-bottom: 120px;">
-    <h1 style="margin-bottom: 4px;">Nuestro Menú</h1>
-    <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
-      Mesa: <strong>{{ table.code }}</strong>
-    </p>
+  <div style="max-width: 1100px; margin: 0 auto; padding: 16px;">
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #e5e7eb;
+    "
+    >
+      <h1 style="margin: 0; font-size: 22px; color: #1f2937;">🍽️ Nuestro Menú</h1>
+      <div
+        style="
+            background: #f3f4f6;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            color: #4b5563;
+            font-weight: 600;
+        "
+      >
+        Mesa: <span style="color:#28a745;">{{ table.code }}</span>
+      </div>
+    </div>
+
+    {% if not categories %}
+      <div
+        style="
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+            background: #f9fafb;
+            border-radius: 10px;
+        "
+      >
+        <p style="font-size: 16px; margin: 0;">
+          No hay productos disponibles en este momento.
+        </p>
+      </div>
+    {% endif %}
 
     {% for category in categories %}
-      <h2
-        style="color: #333; margin: 24px 0 12px; border-bottom: 2px solid #dee2e6; padding-bottom: 4px;"
-      >
-        {{ category.name }}
-      </h2>
-      <div
-        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;"
-      >
-        {% for product in products %}
-          {% if product.category == category %}
-            <div
-              style="border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; background: #fff;"
-            >
-              <div>
-                <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">
-                  {{ product.name }}
-                </div>
-                {% if product.description %}
-                  <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
-                    {{ product.description }}
-                  </div>
+      {% with category_products=products|dictsort:"sort_order" %}
+        {# Filtrar productos de esta categoría #}
+        {% regroup products by category as grouped %}
+        {% for group in grouped %}
+          {% if group.grouper == category %}
+            <section style="margin-bottom: 32px;">
+              <h2
+                style="
+                            font-size: 18px;
+                            color: #1f2937;
+                            margin-bottom: 14px;
+                            padding-bottom: 8px;
+                            border-bottom: 1px solid #e5e7eb;
+                        "
+              >
+                {{ category.name }}
+                {% if category.description %}
+                  <span
+                    style="
+                                    display: block;
+                                    font-size: 12px;
+                                    color: #6b7280;
+                                    font-weight: normal;
+                                    margin-top: 2px;
+                                "
+                  >
+                    {{ category.description }}
+                  </span>
                 {% endif %}
-              </div>
+              </h2>
 
               <div
-                style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 8px; border-top: 1px dashed #f0f0f0;"
+                style="
+                            display: grid;
+                            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                            gap: 16px;
+                        "
               >
-                <div style="font-size: 16px; font-weight: 700; color: #28a745;">
-                  {{ product.price|floatformat:2|peso }}
-                </div>
-
-                <form
-                  method="post"
-                  action="{% url 'add_to_cart' table_code %}"
-                  style="display: flex; gap: 6px; align-items: center; margin: 0;"
-                >
-                  {% csrf_token %}
-                  <input
-                    type="hidden"
-                    name="product_id"
-                    value="{{ product.pk }}"
-                  />
-                  <input
-                    type="number"
-                    name="quantity"
-                    value="1"
-                    min="1"
-                    max="20"
-                    style="width: 48px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-size: 13px;"
-                  />
-                  <button
-                    type="submit"
-                    hx-post="{% url 'add_to_cart' table_code %}"
-                    hx-target="#cart-summary"
-                    hx-swap="outerHTML"
-                    style="background: #007bff; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; border-radius: 4px;"
-                  >
-                    + Agregar
-                  </button>
-                </form>
+                {% for product in group.list %}
+                  {% include "pos/_product_card.html" with product=product %}
+                {% endfor %}
               </div>
-            </div>
+            </section>
           {% endif %}
         {% endfor %}
-      </div>
+      {% endwith %}
     {% endfor %}
+
+    {# Espacio para que la sticky bar no tape el último producto #}
+    <div style="height: 100px;"></div>
   </div>
 
-  <!-- Carrito flotante -->
   {% include "pos/_cart_summary.html" %}
 {% endblock %}

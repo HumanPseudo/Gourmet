@@ -4,7 +4,9 @@
 
 POS system for restaurant management.
 
-**Features:** menu management, restaurant tables, order workflow (open → close), kitchen display, inventory tracking (items, recipes, movements), jukebox queue with remote player, role-based staff accounts, token-authenticated REST API.
+**Features:** menu management, restaurant tables, order workflow (open → close), kitchen
+display, inventory tracking (items, recipes, movements), jukebox queue with remote
+player, role-based staff accounts, token-authenticated REST API.
 
 **Stack:** Django + Ninja API, PostgreSQL, Tailwind CSS, HTMX, Docker.
 
@@ -133,6 +135,90 @@ cog.out('\n'.join(mdown.split('\n')[1:]))
   * description: Enable to measure template coverage
   * type: `bool`
   * default: `False`
+* **CORS_ALLOWED_ORIGINS**
+  * description: Allowed origins for CORS (e.g. frontend dev server)
+  * type: `list[str]`
+  * default: `['http://localhost:5173']`
+* **CSRF_TRUSTED_ORIGINS**
+  * description: Trusted origins for CSRF (e.g. https://example.com)
+  * type: `list[str]`
+  * default: `[]`
+* **ADMIN_EMAIL**
+  * description: Email address for server error notifications
+  * type: `str`
+  * default: ``
+* **EMAIL_HOST**
+  * description: SMTP host for sending emails
+  * type: `str`
+  * default: `localhost`
+* **EMAIL_PORT**
+  * description: SMTP port for sending emails
+  * type: `int`
+  * default: `25`
+* **EMAIL_HOST_USER**
+  * description: SMTP user for sending emails
+  * type: `str`
+  * default: ``
+* **EMAIL_HOST_PASSWORD**
+  * description: SMTP password for sending emails
+  * type: `str`
+  * default: ``
+* **EMAIL_USE_TLS**
+  * description: Enable TLS for SMTP
+  * type: `bool`
+  * default: `False`
+* **EMAIL_USE_SSL**
+  * description: Enable SSL for SMTP
+  * type: `bool`
+  * default: `False`
+* **DEFAULT_FROM_EMAIL**
+  * description: Default from address for emails
+  * type: `str`
+  * default: `webmaster@localhost`
+* **SERVER_EMAIL**
+  * description: Email address for system-generated error messages
+  * type: `str`
+  * default: `root@localhost`
+* **PEAR_API_URL**
+  * description: URL for the Pear (Music Player Desktop) API
+  * type: `str`
+  * default: `http://localhost:9863/api/v1`
+* **BUSINESS_NAME**
+  * description: Business name shown on receipts
+  * type: `str`
+  * default: `Gourmet`
+* **BUSINESS_NIT**
+  * description: Business NIT shown on receipts
+  * type: `str`
+  * default: `123.456.789-0`
+* **MENU_IMAGE_BASE_URL**
+  * description: Base URL for menu images. In dev: /media/menu/. In prod: https://<project>.supabase.co/storage/v1/object/public/<bucket>/
+  * type: `str`
+  * default: `/media/menu/`
+* **SUPABASE_STORAGE_ENDPOINT**
+  * description: Supabase S3-compatible endpoint, e.g. https://jnximziycwmcauyfilmy.supabase.co/storage/v1/s3
+  * type: `str`
+  * default: `https://jnximziycwmcauyfilmy.supabase.co/storage/v1/s3`
+* **SUPABASE_STORAGE_REGION**
+  * description: Region for Supabase S3 storage (e.g. us-east-1)
+  * type: `str`
+  * default: `ca-central-1`
+* **SUPABASE_STORAGE_ACCESS_KEY**
+  * description: Supabase S3 access key
+  * type: `str`
+  * default: `7d328887509450ccc3102af3e2a70fb7`
+* **SUPABASE_STORAGE_SECRET_KEY**
+  * description: Supabase S3 secret key
+  * type: `str`
+  * default: `e7af7f4de54cf69ee50423dd21c900b6047e22c044a44bebf4af4c39178eae82`
+* **SUPABASE_STORAGE_BUCKET**
+  * description: Bucket name for menu images in Supabase
+  * type: `str`
+  * default: `Gourmet`
+* **SUPABASE_STORAGE_PUBLIC_URL**
+  * description: Public base URL for served images, e.g. https://jnximziycwmcauyfilmy.supabase.co/storage/v1/object/public/menu-images/
+  * type: `str`
+  * default: `https://jnximziycwmcauyfilmy.supabase.co/storage/v1/object/public/menu-images/`
       <!-- [[[end]]] -->
 
 <!-- prettier-ignore-end -->
@@ -153,10 +239,7 @@ cog.out(
 ```
 Available make commands:
 
-init                      Initialize the project
-run                       Run the project
-test                      Run tests
-upgrade-requirements      Upgrade all dependencies in uv.lock
+
 ```
 <!-- [[[end]]] -->
 

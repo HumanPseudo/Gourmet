@@ -1,0 +1,244 @@
+{% load currency %}
+{# product: objeto Product con tags precargados #}
+
+<style>
+  .product-card {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .product-card--unavailable {
+    opacity: 0.7;
+  }
+
+  .product-card__media {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background: #f3f4f6;
+    overflow: hidden;
+  }
+  .product-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .product-card__img--grayscale {
+    filter: grayscale(100%);
+  }
+
+  .product-card__no-img {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 14px;
+  }
+
+  .product-card__badges {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .product-card__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    color: var(--tag-color, #28a745);
+  }
+  .product-card__tag-icon {
+    height: 12px;
+    width: 12px;
+  }
+
+  .product-card__soldout {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+  }
+  .product-card__soldout-badge {
+    background: #dc3545;
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .product-card__body {
+    padding: 12px 14px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .product-card__name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .product-card__desc {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    line-height: 1.4;
+    flex: 1;
+  }
+  .product-card__spacer {
+    flex: 1;
+  }
+
+  .product-card__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .product-card__price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #28a745;
+  }
+  .product-card__form {
+    margin: 0;
+  }
+  .product-card__btn {
+    background: #28a745;
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .product-card__btn--disabled {
+    background: #d1d5db;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+</style>
+
+{% with is_available=product.is_available image_url=product.get_image_url %}
+  <div
+    class="product-card{% if not is_available %}product-card--unavailable{% endif %}"
+  >
+    {# Imagen #}
+    <div class="product-card__media">
+      {% if image_url %}
+        <img
+          src="{{ image_url }}"
+          alt="{{ product.name }}"
+          class="product-card__img{% if not is_available %}product-card__img--grayscale{% endif %}"
+          loading="lazy"
+        />
+      {% else %}
+        <div class="product-card__no-img">🍽️ Sin imagen</div>
+      {% endif %}
+
+      {# Badges de tags en esquina superior derecha #}
+      {% if is_available and product.active_tags %}
+        <div class="product-card__badges">
+          {% for tag in product.active_tags %}
+            <div
+              class="product-card__tag"
+              style="--tag-color: {{ tag.color|default:'#28a745' }};"
+            >
+              {% if tag.icon %}
+                <img
+                  src="{{ tag.icon.url }}"
+                  alt=""
+                  class="product-card__tag-icon"
+                />
+              {% endif %}
+              <span>{{ tag.name }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {# Badge "Agotado" #}
+      {% if not is_available %}
+        <div class="product-card__soldout">
+          <span class="product-card__soldout-badge">AGOTADO</span>
+        </div>
+      {% endif %}
+    </div>
+
+    {# Contenido #}
+    <div class="product-card__body">
+      <div class="product-card__name">{{ product.name }}</div>
+
+      {% if product.description %}
+        <div class="product-card__desc">{{ product.description|truncatechars:80 }}</div>
+      {% else %}
+        <div class="product-card__spacer"></div>
+      {% endif %}
+
+      <div class="product-card__footer">
+        <span class="product-card__price">
+          {{ product.price|floatformat:2|peso }}
+        </span>
+
+        {% if is_available %}
+          <form
+            method="post"
+            action="{% url 'add_to_cart' table_code %}"
+            hx-post="{% url 'add_to_cart' table_code %}"
+            hx-target="#cart-summary"
+            hx-swap="outerHTML"
+            class="product-card__form"
+          >
+            {% csrf_token %}
+            <input
+              type="hidden"
+              name="product_id"
+              value="{{ product.id }}"
+            />
+            <input
+              type="hidden"
+              name="quantity"
+              value="1"
+            />
+            <button
+              type="submit"
+              class="product-card__btn"
+            >
+              + Agregar
+            </button>
+          </form>
+        {% else %}
+          <button
+            type="button"
+            disabled
+            class="product-card__btn product-card__btn--disabled"
+          >
+            No disponible
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endwith %}

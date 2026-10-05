@@ -177,9 +177,7 @@ def pos_close(request, order_id):
 @role_required("waiter", "admin")
 def pos_order_json(request, order_id):
     order = get_object_or_404(
-        Order.objects.select_related("table").prefetch_related(
-            "items", "payments"
-        ),
+        Order.objects.select_related("table").prefetch_related("items", "payments"),
         pk=order_id,
     )
     return JsonResponse(_order_json(order))
@@ -211,9 +209,11 @@ def pos_set_table(request, order_id):
 
 @role_required("waiter", "admin")
 def pos_floor_status(request):
-    layout = TableLayout.objects.filter(is_active=True).prefetch_related(
-        "items__table"
-    ).first()
+    layout = (
+        TableLayout.objects.filter(is_active=True)
+        .prefetch_related("items__table")
+        .first()
+    )
     open_order_by_table = dict(
         Order.objects.filter(
             status=Order.Status.OPEN, table_id__isnull=False
@@ -249,9 +249,9 @@ def pos_floor_status(request):
 
     unplaced = [
         _table_json(t)
-        for t in Table.objects.filter(is_active=True).exclude(
-            pk__in=placed_ids
-        ).order_by("code")
+        for t in Table.objects.filter(is_active=True)
+        .exclude(pk__in=placed_ids)
+        .order_by("code")
     ]
 
     no_table_orders = [
@@ -324,9 +324,7 @@ def floor_view(request):
         .order_by("code")
     ]
 
-    waiters = User.objects.filter(role__name="waiter", is_active=True).order_by(
-        "name"
-    )
+    waiters = User.objects.filter(role__name="waiter", is_active=True).order_by("name")
 
     return render(
         request,
@@ -846,9 +844,7 @@ def _cart_context(request: HttpRequest, table_code: str) -> dict[str, Any]:
         if product is None:
             continue
         item_total = product.price * qty
-        cart_items.append(
-            {"product": product, "quantity": qty, "total": item_total}
-        )
+        cart_items.append({"product": product, "quantity": qty, "total": item_total})
         cart_total += item_total
         cart_count += qty
     return {
@@ -892,8 +888,12 @@ def menu_public(request: HttpRequest, table_code: str) -> HttpResponse:
     """Vista pública del menú para autogestión por QR."""
     table = get_object_or_404(Table, code=table_code, is_active=True)
     products = (
-        Product.objects.filter(is_available=True)
+        Product.objects.filter(
+            is_available=True,
+            category__is_active=True,  # <-- AGREGAR ESTA LÍNEA
+        )
         .select_related("category")
+        .prefetch_related("tags")
         .order_by("category__sort_order", "sort_order", "name")
     )
     categories = {p.category for p in products if p.category}
@@ -986,12 +986,8 @@ def checkout_qr(request: HttpRequest, table_code: str) -> HttpResponse:
 
     del request.session[key]
     request.session.modified = True
-    messages.success(
-        request, f"¡Pedido enviado a cocina! Orden #{str(order.pk)[:8]}"
-    )
-    return render(
-        request, "pos/order_success.html", {"order": order, "table": table}
-    )
+    messages.success(request, f"¡Pedido enviado a cocina! Orden #{str(order.pk)[:8]}")
+    return render(request, "pos/order_success.html", {"order": order, "table": table})
 
 
 @role_required("admin", "waiter")
@@ -1014,8 +1010,7 @@ def print_qr_tables(request: HttpRequest) -> HttpResponse:
     """Vista para imprimir todos los QRs de las mesas."""
     tables = Table.objects.filter(is_active=True).order_by("code")
     tables_with_qr = [
-        {"table": table, "url": _qr_menu_url(request, table.code)}
-        for table in tables
+        {"table": table, "url": _qr_menu_url(request, table.code)} for table in tables
     ]
     return render(
         request,
