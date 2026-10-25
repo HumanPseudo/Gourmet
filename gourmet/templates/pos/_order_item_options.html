@@ -1,0 +1,15 @@
+{% load order_tags %}
+
+{% if item.selected_options %}
+  <div
+    style="
+            margin-top: 6px; font-size: 13px;
+            color: #4b5563;
+            border: 1px solid #698291;
+            padding: 6px 8px;"
+  >
+    {% for option in item.selected_options|order_item_list %}
+      <div>• {{ option.group_name|clean_group_name }}: {{ option.value_name }}</div>
+    {% endfor %}
+  </div>
+{% endif %}

@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from gourmet.apps.inventory.models import InventoryMovement, ProductRecipe
 from gourmet.apps.menu.models import Product
+from gourmet.apps.menu.services import MenuAvailabilityService, MenuOptionService
 from gourmet.apps.tables.models import Table
 
 from .models import BillSplit, BillSplitItem, Invoice, Order, OrderItem, Payment
@@ -91,11 +92,66 @@ class OrderService:
             source=source,
         ).first()
         if order is None:
-            order = OrderService.create(
-                table_id=table_id, notes=notes, source=source
-            )
+            order = OrderService.create(table_id=table_id, notes=notes, source=source)
         for product_id, quantity in items:
             OrderService.add_item(order.pk, product_id, quantity, "")
+        return OrderService.checkout(order.pk)
+
+    @staticmethod
+    @transaction.atomic
+    def create_from_cart_lines(
+        table_id: UUID,
+        lines: list[dict],
+        notes: str = "",
+        source: str = Order.Source.QR,
+    ) -> Order:
+        order = Order.objects.filter(
+            table_id=table_id,
+            status=Order.Status.OPEN,
+            source=source,
+        ).first()
+
+        if order is None:
+            order = OrderService.create(
+                table_id=table_id,
+                notes=notes,
+                source=source,
+            )
+
+        for line in lines:
+            raw_product_id = line.get("product_id")
+            quantity = min(int(line.get("quantity", 1)), 99)
+            option_value_ids = line.get("option_value_ids", [])
+
+            try:
+                product_id = UUID(str(raw_product_id))
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Producto inválido en el carrito") from exc
+
+            product = Product.objects.filter(pk=product_id).first()
+            if product is None:
+                raise ValueError("Producto no encontrado")
+
+            if not MenuAvailabilityService.is_product_orderable(product):
+                raise ValueError(f"{product.name} no está disponible")
+
+            selected_options, price_delta = MenuOptionService.validate_selection(
+                product,
+                option_value_ids,
+            )
+
+            unit_price = (product.price + price_delta).quantize(Decimal("0.01"))
+
+            OrderService.add_item(
+                order.pk,
+                product.pk,
+                quantity,
+                "",
+                None,
+                unit_price,
+                selected_options,
+            )
+
         return OrderService.checkout(order.pk)
 
     @staticmethod
@@ -106,19 +162,27 @@ class OrderService:
         quantity: int,
         notes: str,
         discount_percent: Decimal | None = None,
+        unit_price: Decimal | None = None,
+        selected_options: list | None = None,
     ) -> OrderItem:
         order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
         product = get_object_or_404(Product, pk=product_id)
         tax_rate = TAX_RATES.get(product.tax_type, Decimal("0.00"))
+
+        final_price = (
+            unit_price if unit_price is not None else product.price
+        ).quantize(Decimal("0.01"))
+
         item = OrderItem.objects.create(
             order=order,
             product=product,
             product_name=product.name,
-            product_price=product.price,
+            product_price=final_price,
             quantity=quantity,
             tax_rate=tax_rate,
             discount_percent=discount_percent or Decimal("0.00"),
             notes=notes,
+            selected_options=selected_options or [],
         )
         return item
 
@@ -448,9 +512,7 @@ class OrderService:
         order = get_object_or_404(Order, pk=order_id)
         total_pct = sum(Decimal(str(d["percentage"])) for d in percentages_data)
         if total_pct != Decimal("100.00"):
-            raise ValueError(
-                f"Percentages must sum to 100, got {total_pct}"
-            )
+            raise ValueError(f"Percentages must sum to 100, got {total_pct}")
         splits: list[BillSplit] = []
         for data in percentages_data:
             pct = Decimal(str(data["percentage"]))
@@ -502,7 +564,10 @@ class OrderService:
     @staticmethod
     @transaction.atomic
     def mark_split_paid(
-        split_id: UUID, method: str, reference: str = "", tip: Decimal | None = None,
+        split_id: UUID,
+        method: str,
+        reference: str = "",
+        tip: Decimal | None = None,
     ) -> BillSplit:
         """Mark a split as paid and create a Payment on the order."""
         split = get_object_or_404(BillSplit, pk=split_id)

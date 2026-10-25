@@ -146,6 +146,9 @@ _HAS_MANIFEST = (STATIC_ROOT / "staticfiles.json").exists()
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Menu images
+MENU_IMAGE_BASE_URL = config.SUPABASE_STORAGE_PUBLIC_URL or MEDIA_URL
+
 STATICFILES_DIRS = [
     _dir
     for _dir in [

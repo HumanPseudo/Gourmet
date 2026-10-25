@@ -105,6 +105,11 @@ class OrderItem(models.Model):
         models.PositiveSmallIntegerField(default=1)
     )
     notes: models.TextField[str, str] = models.TextField(blank=True, default="")
+    selected_options: models.JSONField = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Selected options",
+    )
     status: models.CharField[str, str] = models.CharField(
         max_length=16,
         choices=Status.choices,
@@ -123,6 +128,16 @@ class OrderItem(models.Model):
 
     def __str__(self) -> str:
         return f"{self.product_name} x{self.quantity}"
+
+    @property
+    def options_summary(self) -> str:
+        if not self.selected_options:
+            return ""
+
+        return " / ".join(
+            f"{option.get('group_name')}: {option.get('value_name')}"
+            for option in self.selected_options
+        )
 
 
 class Payment(models.Model):

@@ -1,0 +1,167 @@
+{% load currency %}
+
+{{ modal_config|json_script:"modal-config-data" }}
+
+<div
+  class="product-modal-root"
+  data-config-id="modal-config-data"
+>
+  <div
+    class="product-modal-backdrop"
+    style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 2000; display: flex; align-items: flex-end; justify-content: center; padding: 12px;"
+  >
+    <div
+      style="background: #fff; border-radius: 12px; width: 100%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);"
+    >
+      <div
+        style="padding: 14px 16px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; background: #f8f9fa;"
+      >
+        <h3 style="margin: 0; font-size: 16px; font-weight: bold; color: #333;">
+          {{ product.name }}
+        </h3>
+        <button
+          type="button"
+          class="product-modal-close"
+          style="background: none; border: none; font-size: 22px; cursor: pointer; color: #666; line-height: 1;"
+        >
+          &times;
+        </button>
+      </div>
+
+      <div style="padding: 16px; overflow-y: auto; flex: 1;">
+        {% if product.get_image_url %}
+          <img
+            src="{{ product.get_image_url }}"
+            alt="{{ product.name }}"
+            style="width: 100%; max-height: 220px; object-fit: cover; border-radius: 8px; margin-bottom: 12px;
+                     --filter: {% if not orderable %}grayscale(100%){% endif %}"
+          />
+        {% endif %}
+
+        {% if product.description %}
+          <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px;">
+            {{ product.description }}
+          </p>
+        {% endif %}
+
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-weight: 700;"
+        >
+          <span>Precio base</span>
+          <span style="color:#28a745;">{{ product.price|floatformat:2|peso }}</span>
+        </div>
+
+        {% if not orderable %}
+          <div
+            style="background: #fff3cd; border: 1px solid #ffc107; color: #664d03; padding: 10px 12px; border-radius: 6px; margin-bottom: 14px;"
+          >
+            Este producto no está disponible en este momento.
+          </div>
+        {% endif %}
+        {% csrf_token %}
+
+        {% for attachment in attachments %}
+          {% with group=attachment.option_group %}
+            <div
+              data-group-container="{{ group.pk }}"
+              style="margin-bottom: 16px;"
+            >
+              <div style="font-weight: 700; margin-bottom: 8px; color: #1f2937;">
+                {{ group.name }}
+                {% if attachment.is_required or group.min_selections > 0 %}
+                  <span style="color:#dc3545;">*</span>
+                {% endif %}
+                {% if group.selection_type == "multiple" %}
+                  <span style="font-weight: normal; color:#6b7280; font-size:12px;"
+                    >(máx. {{ group.max_selections }})</span
+                  >
+                {% endif %}
+              </div>
+
+              {% if group.description %}
+                <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">
+                  {{ group.description }}
+                </div>
+              {% endif %}
+
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                {% for value in group.values.all %}
+                  {% if value.is_available %}
+                    <label
+                      style="display: flex; align-items: center; gap: 8px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; cursor: pointer;"
+                    >
+                      <input
+                        type="{% if group.selection_type == 'single' %}radio{% else %}checkbox{% endif %}"
+                        class="option-input"
+                        name="option_group_{{ group.pk }}"
+                        data-group-id="{{ group.pk }}"
+                        data-value-id="{{ value.pk }}"
+                        data-multiple="{% if group.selection_type == 'multiple' %}1{% else %}0{% endif %}"
+                        data-price="{{ value.price_delta }}"
+                      />
+                      <span>
+                        {{ value.name }}
+                        {% if value.price_delta > 0 %}
+                          <strong style="color:#28a745;"
+                            >+{{ value.price_delta|floatformat:2|peso }}</strong
+                          >
+                        {% endif %}
+                      </span>
+                    </label>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          {% endwith %}
+        {% endfor %}
+
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px;"
+        >
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label
+              for="product-qty"
+              style="font-weight:600;"
+              >Cantidad</label
+            >
+            <input
+              type="number"
+              class="product-qty"
+              min="1"
+              max="99"
+              value="1"
+              style="width: 70px; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 6px;"
+            />
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:12px;color:#6b7280;">
+              Unitario: <span class="product-unit-price"></span>
+            </div>
+            <div style="font-size:18px;font-weight:800;color:#28a745;">
+              <span class="product-total-price"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style="padding: 14px 16px; border-top: 1px solid #dee2e6; background: #f8f9fa; display: flex; justify-content: space-between; gap: 12px;"
+      >
+        <button
+          type="button"
+          class="product-modal-close"
+          style="background: #6c757d; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 700; cursor: pointer;"
+        >
+          Cerrar
+        </button>
+        <button
+          type="button"
+          class="product-submit"
+          style="background: #28a745; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 700; cursor: pointer;"
+        >
+          Agregar al carrito
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

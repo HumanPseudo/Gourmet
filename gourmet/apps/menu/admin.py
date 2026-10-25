@@ -1,7 +1,37 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Category, Product, ProductTag
+from .models import (
+    Category,
+    CategoryAvailabilityRule,
+    OptionGroup,
+    OptionValue,
+    Product,
+    ProductOptionGroup,
+    ProductTag,
+)
+
+
+class CategoryAvailabilityRuleInline(admin.StackedInline):
+    model = CategoryAvailabilityRule
+    extra = 0
+    fields = (
+        "name",
+        "is_active",
+        "badge_text",
+        "start_date",
+        "end_date",
+        "start_time",
+        "end_time",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+        "sort_order",
+    )
 
 
 @admin.register(Category)
@@ -9,6 +39,7 @@ class CategoryAdmin(admin.ModelAdmin[Category]):
     list_display = ("name", "sort_order", "is_active", "products_count")
     list_editable = ("sort_order", "is_active")
     search_fields = ("name",)
+    inlines = [CategoryAvailabilityRuleInline]
 
     @admin.display(description="# Productos", ordering="products__count")
     def products_count(self, obj: Category) -> int:
@@ -17,7 +48,14 @@ class CategoryAdmin(admin.ModelAdmin[Category]):
 
 @admin.register(ProductTag)
 class ProductTagAdmin(admin.ModelAdmin[ProductTag]):
-    list_display = ("icon_preview", "name", "slug", "color", "sort_order", "is_active")
+    list_display = (
+        "icon_preview",
+        "name",
+        "slug",
+        "color",
+        "sort_order",
+        "is_active",
+    )
     list_editable = ("sort_order", "is_active", "color")
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
@@ -61,6 +99,44 @@ class ProductTagAdmin(admin.ModelAdmin[ProductTag]):
         )
 
 
+class OptionValueInline(admin.StackedInline):
+    model = OptionValue
+    extra = 0
+    fields = (
+        "name",
+        "price_delta",
+        "is_available",
+        "sort_order",
+    )
+
+
+@admin.register(OptionGroup)
+class OptionGroupAdmin(admin.ModelAdmin[OptionGroup]):
+    list_display = (
+        "name",
+        "selection_type",
+        "min_selections",
+        "max_selections",
+        "is_active",
+    )
+    list_editable = ("is_active",)
+    search_fields = ("name",)
+    inlines = [OptionValueInline]
+
+
+class ProductOptionGroupInline(admin.StackedInline):
+    model = ProductOptionGroup
+    extra = 0
+    fields = (
+        "option_group",
+        "is_required",
+        "sort_order",
+        "condition_parent",
+        "condition_values",
+    )
+    filter_horizontal = ("condition_values",)
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin[Product]):
     list_display = (
@@ -72,12 +148,13 @@ class ProductAdmin(admin.ModelAdmin[Product]):
         "tags_list",
         "sort_order",
     )
-    list_display_links = ("name",)  # <-- AGREGAR: Hace que el nombre sea clickeable
+    list_display_links = ("name",)
     list_editable = ("price", "is_available", "sort_order")
     list_filter = ("category", "is_available", "tags")
     search_fields = ("name", "description")
     filter_horizontal = ("tags",)
     readonly_fields = ("image_preview",)
+    inlines = [ProductOptionGroupInline]
     fieldsets = (
         (
             "Información básica",

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load currency %}
+{% load static currency %}
 {% block head_title %}Menú | Gourmet{% endblock %}
 
 {% block content %}
@@ -15,6 +15,7 @@
     "
     >
       <h1 style="margin: 0; font-size: 22px; color: #1f2937;">🍽️ Nuestro Menú</h1>
+
       <div
         style="
             background: #f3f4f6;
@@ -46,57 +47,270 @@
     {% endif %}
 
     {% for category in categories %}
-      {% with category_products=products|dictsort:"sort_order" %}
-        {# Filtrar productos de esta categoría #}
-        {% regroup products by category as grouped %}
-        {% for group in grouped %}
-          {% if group.grouper == category %}
-            <section style="margin-bottom: 32px;">
-              <h2
+      <section style="margin-bottom: 32px;">
+        <h2
+          style="
+                font-size: 18px;
+                color: #1f2937;
+                margin-bottom: 14px;
+                padding-bottom: 8px;
+                border-bottom: 1px solid #e5e7eb;
+            "
+        >
+          {{ category.name }}
+
+          {% if category.description %}
+            <span
+              style="
+                        display: block;
+                        font-size: 12px;
+                        color: #6b7280;
+                        font-weight: normal;
+                        margin-top: 2px;
+                    "
+            >
+              {{ category.description }}
+            </span>
+          {% endif %}
+        </h2>
+
+        <div
+          style="
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                gap: 16px;
+            "
+        >
+          {% for product in products %}
+            {% if product.category == category %}
+              <div
+                class="product-card {% if not product.is_available %}product-card--unavailable{% endif %}"
                 style="
-                            font-size: 18px;
-                            color: #1f2937;
-                            margin-bottom: 14px;
-                            padding-bottom: 8px;
-                            border-bottom: 1px solid #e5e7eb;
+                            display: flex;
+                            flex-direction: column;
+                            background: #fff;
+                            border: 1px solid #e5e7eb;
+                            border-radius: 10px;
+                            overflow: hidden;
                         "
               >
-                {{ category.name }}
-                {% if category.description %}
-                  <span
+                <div
+                  style="
+                                position: relative;
+                                aspect-ratio: 16/10;
+                                background: #f3f4f6;
+                                overflow: hidden;
+                            "
+                >
+                  {% if product.get_image_url %}
+                    <img
+                      src="{{ product.get_image_url }}"
+                      alt="{{ product.name }}"
+                      loading="lazy"
+                      class="{% if not product.is_available %}product-card__image--unavailable{% endif %}"
+                      style="
+                                            width: 100%;
+                                            height: 100%;
+                                            object-fit: cover;
+                                            display: block;
+                                         "
+                    />
+                  {% else %}
+                    <div
+                      style="
+                                        width: 100%;
+                                        height: 100%;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        color: #9ca3af;
+                                        font-size: 14px;
+                                    "
+                    >
+                      🍽️ Sin imagen
+                    </div>
+                  {% endif %}
+
+                  {% if product.is_available %}
+                    {% with tags=product.active_tags %}
+                      {% if tags %}
+                        <div
+                          style="
+                                                position: absolute;
+                                                top: 8px;
+                                                right: 8px;
+                                                display: flex;
+                                                flex-direction: column;
+                                                gap: 4px;
+                                                align-items: flex-end;
+                                            "
+                        >
+                          {% for tag in tags %}
+                            <div
+                              style="
+                                                        --tag-color: {{ tag.color|default:'#28a745' }};
+                                                        display: inline-flex;
+                                                        align-items: center;
+                                                        gap: 4px;
+                                                        background: rgba(255, 255, 255, 0.95);
+                                                        border-radius: 999px;
+                                                        padding: 3px 8px;
+                                                        font-size: 11px;
+                                                        font-weight: 700;
+                                                        color: var(--tag-color, #28a745);
+                                                        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+                                                    "
+                            >
+                              {% if tag.icon %}
+                                <img
+                                  src="{{ tag.icon.url }}"
+                                  alt=""
+                                  style="height:12px;width:12px;"
+                                />
+                              {% endif %}
+                              <span>{{ tag.name }}</span>
+                            </div>
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                    {% endwith %}
+                  {% endif %}
+
+                  {% if not product.is_available %}
+                    <div
+                      style="
+                                        position: absolute;
+                                        inset: 0;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        background: rgba(0, 0, 0, 0.25);
+                                    "
+                    >
+                      <span
+                        style="
+                                            background: #dc3545;
+                                            color: #fff;
+                                            padding: 6px 14px;
+                                            border-radius: 999px;
+                                            font-size: 13px;
+                                            font-weight: 700;
+                                            letter-spacing: 0.5px;
+                                        "
+                      >
+                        AGOTADO
+                      </span>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div
+                  style="
+                                padding: 12px 14px;
+                                flex: 1;
+                                display: flex;
+                                flex-direction: column;
+                            "
+                >
+                  <div
                     style="
-                                    display: block;
-                                    font-size: 12px;
-                                    color: #6b7280;
-                                    font-weight: normal;
-                                    margin-top: 2px;
+                                    font-size: 15px;
+                                    font-weight: 600;
+                                    color: #1f2937;
+                                    margin-bottom: 4px;
+                                    line-height: 1.3;
                                 "
                   >
-                    {{ category.description }}
-                  </span>
-                {% endif %}
-              </h2>
+                    {{ product.name }}
+                  </div>
 
-              <div
-                style="
-                            display: grid;
-                            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-                            gap: 16px;
-                        "
-              >
-                {% for product in group.list %}
-                  {% include "pos/_product_card.html" with product=product %}
-                {% endfor %}
+                  {% if product.description %}
+                    <div
+                      style="
+                                        font-size: 12px;
+                                        color: #6b7280;
+                                        margin-bottom: 10px;
+                                        line-height: 1.4;
+                                        flex: 1;
+                                    "
+                    >
+                      {{ product.description|truncatechars:80 }}
+                    </div>
+                  {% else %}
+                    <div style="flex: 1;"></div>
+                  {% endif %}
+
+                  <div
+                    style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                    margin-top: 8px;
+                                    gap: 8px;
+                                "
+                  >
+                    <span
+                      style="
+                                        font-size: 16px;
+                                        font-weight: 700;
+                                        color: #28a745;
+                                    "
+                    >
+                      {{ product.price|floatformat:2|peso }}
+                    </span>
+
+                    {% if product.is_available %}
+                      <button
+                        type="button"
+                        hx-get="{% url 'product_modal_public' table_code product.id %}"
+                        hx-target="#product-modal-container"
+                        hx-swap="innerHTML"
+                        style="
+                                                    background: #28a745;
+                                                    color: #fff;
+                                                    border: none;
+                                                    padding: 6px 14px;
+                                                    border-radius: 6px;
+                                                    font-size: 13px;
+                                                    font-weight: 600;
+                                                    cursor: pointer;
+                                                "
+                      >
+                        Agregar
+                      </button>
+                    {% else %}
+                      <button
+                        type="button"
+                        disabled
+                        style="
+                                                    background: #d1d5db;
+                                                    color: #6b7280;
+                                                    border: none;
+                                                    padding: 6px 14px;
+                                                    border-radius: 6px;
+                                                    font-size: 13px;
+                                                    font-weight: 600;
+                                                    cursor: not-allowed;
+                                                "
+                      >
+                        No disponible
+                      </button>
+                    {% endif %}
+                  </div>
+                </div>
               </div>
-            </section>
-          {% endif %}
-        {% endfor %}
-      {% endwith %}
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
     {% endfor %}
 
-    {# Espacio para que la sticky bar no tape el último producto #}
-    <div style="height: 100px;"></div>
+    <div style="height: 110px;"></div>
   </div>
 
+  <div id="product-modal-container"></div>
+
   {% include "pos/_cart_summary.html" %}
+
+  <script src="{% static 'menu-options.js' %}?v={{ now|default:'1' }}"></script>
 {% endblock %}

@@ -2,37 +2,36 @@
 <div
   id="item-{{ item.pk }}"
   class="kcard {{ item.status }}{% if item.elapsed > 20 %}delayed{% endif %}"
+  style="
+    --border-color: {% if item.status == 'pending' %}#17a2b8{% elif item.status == 'preparing' %}#ffc107{% else %}#28a745{% endif %};
+    border: 2px solid var(--border-color);
+  "
 >
+  <!-- Descripción del producto -->
   <div
     style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;"
   >
-    <strong style="font-size: 15px;">{{ item.product_name }}</strong>
-    {% if item.order.source == "qr" %}
-      <span class="ml-2 inline-block rounded bg-blue-500 px-2 py-1 text-xs text-white">
-        QR
-      </span>
-    {% endif %}
-    {% if item.status == 'pending' %}
-      <span
-        style="background: #17a2b8; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 11px;"
-        >{{ item.get_status_display }}</span
-      >
-    {% elif item.status == 'preparing' %}
-      <span
-        style="background: #ffc107; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 11px;"
-        >{{ item.get_status_display }}</span
-      >
-    {% else %}
-      <span
-        style="background: #28a745; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 11px;"
-        >{{ item.get_status_display }}</span
-      >
-    {% endif %}
+    <div>
+      <strong style="font-size: 15px;">{{ item.product_name }}</strong>
+      <!-- QR badge -->
+      {% if item.order.source == "qr" %}
+        <span
+          class="ml-2 inline-block rounded bg-blue-500 px-2 py-1 text-white"
+          style="font-size: 12px; line-height: 1;"
+        >
+          QR
+        </span>
+      {% endif %}
+    </div>
+    {% include "pos/_order_item_options.html" with item=item %}
   </div>
+
+  <!-- Item info -->
+  <!-- Cantidad -->
   <div style="color: #666; font-size: 13px; margin-bottom: 6px;">
-    <strong>{{ item.quantity }}</strong> x {{ item.product_price|floatformat:2|peso }}
-    {% if item.table_code %}| Mesa <strong>{{ item.table_code }}</strong>{% endif %}
+    <strong>Cantidad: {{ item.quantity }}</strong>
   </div>
+  <!-- Tiempo estimado -->
   <div style="display: flex; gap: 12px; font-size: 13px; margin-bottom: 8px;">
     <span
       class="timer timer-{% if item.elapsed > 20 %}bad{% elif item.elapsed > 10 %}warn{% else %}ok{% endif %}"
@@ -43,13 +42,16 @@
       <span class="timer timer-warn">🍳 {{ item.preparing }} min</span>
     {% endif %}
   </div>
+  <!-- Notes -->
   {% if item.notes %}
     <div
       style="background: #f8f9fa; padding: 6px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 8px; border-left: 3px solid #17a2b8;"
     >
-      {{ item.notes }}
+      {{ item.notes }} XD
     </div>
   {% endif %}
+
+  <!-- Action buttons -->
   <div style="display: flex; justify-content: space-between; align-items: center;">
     <span style="font-size: 11px; color: #999;">{{ item.created_at|time:"H:i" }}</span>
     <div style="display: flex; gap: 6px;">

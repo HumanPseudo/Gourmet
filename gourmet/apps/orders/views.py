@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import io
 import json
 from datetime import UTC, datetime, timedelta
@@ -19,7 +20,11 @@ from django.views.decorators.http import require_POST
 from gourmet.apps.accounts.audit import log_audit
 from gourmet.apps.accounts.auth import role_required
 from gourmet.apps.accounts.models import User
-from gourmet.apps.menu.models import Product
+from gourmet.apps.menu.models import Category, Product
+from gourmet.apps.menu.services import (
+    MenuAvailabilityService,
+    MenuOptionService,
+)
 from gourmet.apps.tables.models import Table, TableLayout
 from gourmet.apps.tables.services import TableService
 
@@ -50,6 +55,7 @@ def _order_json(order: Order) -> dict:
                 "price": str(i.product_price),
                 "quantity": i.quantity,
                 "status": i.status,
+                "selected_options": i.selected_options or [],
             }
             for i in items
         ],
@@ -85,6 +91,28 @@ def pos(request):
     )
 
 
+def _add_pos_item(order: Order, item: dict) -> OrderItem:
+    """Agrega un item de POS validando opciones y recalculando precio en servidor."""
+    product = get_object_or_404(Product, pk=item["product_id"])
+    option_value_ids = item.get("option_value_ids", [])
+    unit_price = None
+    selected_options: list = []
+    if option_value_ids:
+        selected_options, delta = MenuOptionService.validate_selection(
+            product, option_value_ids
+        )
+        unit_price = (product.price + delta).quantize(Decimal("0.01"))
+    return OrderService.add_item(
+        order.pk,
+        product.pk,
+        item.get("quantity", 1),
+        item.get("notes", ""),
+        Decimal(str(item.get("discount_percent", 0))),
+        unit_price=unit_price,
+        selected_options=selected_options,
+    )
+
+
 @role_required("waiter", "admin")
 @require_POST
 def pos_create_order(request):
@@ -101,13 +129,7 @@ def pos_create_order(request):
         )
         log_audit(request, "order.created", str(order.pk)[:8])
         for item in data.get("items", []):
-            OrderService.add_item(
-                order.pk,
-                item["product_id"],
-                item.get("quantity", 1),
-                item.get("notes", ""),
-                Decimal(str(item.get("discount_percent", 0))),
-            )
+            _add_pos_item(order, item)
         if data.get("checkout", True):
             order = OrderService.checkout(order.pk)
         return JsonResponse(_order_json(order))
@@ -151,13 +173,7 @@ def pos_add_items(request, order_id):
     data = json.loads(request.body)
     order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
     for item in data.get("items", []):
-        OrderService.add_item(
-            order.pk,
-            item["product_id"],
-            item.get("quantity", 1),
-            item.get("notes", ""),
-            Decimal(str(item.get("discount_percent", 0))),
-        )
+        _add_pos_item(order, item)
     log_audit(request, "order.items_added", f"Order {str(order_id)[:8]}")
     order = OrderService.checkout(order.pk)
     return JsonResponse(_order_json(order))
@@ -818,6 +834,13 @@ def pos_update_item_status(request, order_id, item_id):
     return HttpResponse(html)
 
 
+@role_required("waiter", "admin")
+def pos_product_options(request, product_id):
+    """Devuelve la configuración de opciones de un producto para el modal POS."""
+    product = get_object_or_404(Product, pk=product_id)
+    return JsonResponse(MenuOptionService.pos_option_config(product))
+
+
 @role_required("admin")
 def audit_logs(request):
     from gourmet.apps.accounts.models import AuditLog
@@ -829,49 +852,150 @@ def audit_logs(request):
 MAX_CART_QTY = 99
 
 
-def _cart_key(table_code: str) -> str:
-    return f"cart_{table_code}"
+def cart_key(table_code: str) -> str:
+    return f"cart{table_code}"
+
+
+def _line_id(product_id: UUID, option_value_ids: list[str]) -> str:
+    normalized = sorted(str(value_id) for value_id in option_value_ids)
+    raw = f"{product_id}:{':'.join(normalized)}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def _options_label(selected_options: list[dict]) -> str:
+    if not selected_options:
+        return ""
+
+    return "; ".join(
+        f"{option.get('group_name')}: {option.get('value_name')}"
+        for option in selected_options
+    )
+
+
+def _get_cart_lines(request: HttpRequest, table_code: str) -> list[dict]:
+    data = request.session.get(cart_key(table_code), {})
+
+    if isinstance(data, dict) and "lines" in data:
+        return data.get("lines", [])
+
+    lines: list[dict] = []
+
+    # Compatibilidad con carrito viejo: {product_id: quantity}
+    if isinstance(data, dict):
+        for product_id, quantity in data.items():
+            try:
+                parsed_product_id = UUID(str(product_id))
+            except (TypeError, ValueError, AttributeError):
+                continue
+
+            try:
+                parsed_quantity = int(quantity)
+            except (TypeError, ValueError):
+                continue
+
+            if parsed_quantity <= 0:
+                continue
+
+            lines.append(
+                {
+                    "line_id": _line_id(parsed_product_id, []),
+                    "product_id": str(parsed_product_id),
+                    "quantity": min(parsed_quantity, MAX_CART_QTY),
+                    "option_value_ids": [],
+                    "unit_price": None,
+                    "selected_options": [],
+                }
+            )
+
+    return lines
+
+
+def _save_cart_lines(
+    request: HttpRequest,
+    table_code: str,
+    lines: list[dict],
+) -> None:
+    request.session[cart_key(table_code)] = {"lines": lines}
+    request.session.modified = True
 
 
 def _cart_context(request: HttpRequest, table_code: str) -> dict[str, Any]:
-    """Build the cart rows/totals stored in the session for a table."""
-    cart = request.session.get(_cart_key(table_code), {})
-    cart_items: list[dict[str, Any]] = []
+    lines = _get_cart_lines(request, table_code)
+    now = django_tz.localtime()
+
+    cart_lines: list[dict[str, Any]] = []
     cart_total = Decimal("0.00")
     cart_count = 0
-    for product_id, qty in cart.items():
-        product = Product.objects.filter(pk=product_id, is_available=True).first()
-        if product is None:
+    has_invalid = False
+
+    for line in lines:
+        try:
+            raw_product_id = line.get("product_id")
+            product_id = UUID(str(raw_product_id)) if raw_product_id else None
+
+            if product_id is None:
+                continue
+
+            product = (
+                Product.objects.select_related("category").filter(pk=product_id).first()
+            )
+            quantity = min(int(line.get("quantity", 1)), MAX_CART_QTY)
+        except (TypeError, ValueError, AttributeError):
             continue
-        item_total = product.price * qty
-        cart_items.append({"product": product, "quantity": qty, "total": item_total})
-        cart_total += item_total
-        cart_count += qty
+
+        option_value_ids = line.get("option_value_ids", [])
+        stored_unit_price = Decimal(str(line.get("unit_price") or "0.00"))
+        selected_options = line.get("selected_options", [])
+        valid = True
+        unit_price = stored_unit_price
+
+        if product is None:
+            valid = False
+        else:
+            if not MenuAvailabilityService.is_product_orderable(product, now):
+                valid = False
+
+            try:
+                selected_options, price_delta = MenuOptionService.validate_selection(
+                    product,
+                    option_value_ids,
+                )
+                computed_price = (product.price + price_delta).quantize(Decimal("0.01"))
+
+                if valid:
+                    unit_price = computed_price
+            except ValueError:
+                valid = False
+
+        if not valid:
+            has_invalid = True
+
+        line_total = unit_price * quantity
+        cart_total += line_total
+        cart_count += quantity
+
+        cart_lines.append(
+            {
+                "line_id": line.get("line_id"),
+                "product_id": line.get("product_id"),
+                "product_name": product.name if product else "Producto no disponible",
+                "quantity": quantity,
+                "unit_price": unit_price,
+                "total": line_total,
+                "options": selected_options,
+                "options_label": _options_label(selected_options),
+                "invalid": not valid,
+            }
+        )
+
     return {
-        "cart_items": cart_items,
+        "cart_lines": cart_lines,
+        "cart_items": cart_lines,
         "cart_total": cart_total,
         "cart_count": cart_count,
+        "has_invalid": has_invalid,
         "table_code": table_code,
     }
-
-
-def _parse_cart_selection(request: HttpRequest) -> tuple[UUID, int] | None:
-    """Read and validate product_id/quantity from the POST body."""
-    raw_id = request.POST.get("product_id", "")
-    raw_qty = request.POST.get("quantity", "1")
-    try:
-        product_id = UUID(str(raw_id))
-    except (TypeError, ValueError, AttributeError):
-        return None
-    try:
-        quantity = int(raw_qty)
-    except (TypeError, ValueError):
-        return None
-    if not 1 <= quantity <= MAX_CART_QTY:
-        return None
-    if not Product.objects.filter(pk=product_id, is_available=True).exists():
-        return None
-    return product_id, quantity
 
 
 def _render_cart(request: HttpRequest, table_code: str) -> HttpResponse:
@@ -887,63 +1011,197 @@ def _render_cart(request: HttpRequest, table_code: str) -> HttpResponse:
 def menu_public(request: HttpRequest, table_code: str) -> HttpResponse:
     """Vista pública del menú para autogestión por QR."""
     table = get_object_or_404(Table, code=table_code, is_active=True)
+    now = django_tz.localtime()
+
+    categories = (
+        Category.objects.filter(is_active=True)
+        .prefetch_related("availability_rules")
+        .order_by("sort_order", "name")
+    )
+
+    available_categories = [
+        category
+        for category in categories
+        if MenuAvailabilityService.is_category_available(category, now)
+    ]
+
     products = (
-        Product.objects.filter(
-            is_available=True,
-            category__is_active=True,  # <-- AGREGAR ESTA LÍNEA
-        )
+        Product.objects.filter(category__in=available_categories)
         .select_related("category")
         .prefetch_related("tags")
         .order_by("category__sort_order", "sort_order", "name")
     )
-    categories = {p.category for p in products if p.category}
-    sorted_cats = sorted(categories, key=lambda c: c.sort_order)
+
     return render(
         request,
         "pos/customer_menu.html",
         {
             "table": table,
             "products": products,
-            "categories": sorted_cats,
+            "categories": available_categories,
             **_cart_context(request, table_code),
+        },
+    )
+
+
+def product_modal_public(
+    request: HttpRequest,
+    table_code: str,
+    product_id: UUID,
+) -> HttpResponse:
+    get_object_or_404(Table, code=table_code, is_active=True)
+    product = get_object_or_404(
+        Product.objects.select_related("category").prefetch_related("tags"),
+        pk=product_id,
+    )
+
+    now = django_tz.localtime()
+    orderable = MenuAvailabilityService.is_product_orderable(product, now)
+    attachments = MenuOptionService.get_product_attachments(product)
+
+    groups = []
+    conditions = []
+
+    for attachment in attachments:
+        group = attachment.option_group
+        min_selections = group.min_selections
+
+        if attachment.is_required and min_selections < 1:
+            min_selections = 1
+
+        groups.append(
+            {
+                "id": str(group.pk),
+                "name": group.name,
+                "required": attachment.is_required or min_selections > 0,
+                "min": min_selections,
+                "max": group.max_selections,
+                "multiple": group.selection_type == "multiple",
+            }
+        )
+
+        if attachment.condition_parent is not None:
+            conditions.append(
+                {
+                    "group": str(group.pk),
+                    "parent": str(attachment.condition_parent.option_group_id),
+                    "values": [
+                        str(condition_value.pk)
+                        for condition_value in attachment.condition_values.all()
+                    ],
+                }
+            )
+
+    # PASAR EL DICCIONARIO DIRECTO, NO json.dumps
+    modal_config = {
+        "product_id": str(product.pk),
+        "add_url": reverse("add_to_cart", kwargs={"table_code": table_code}),
+        "base_price": str(product.price),
+        "orderable": orderable,
+        "groups": groups,
+        "conditions": conditions,
+    }
+
+    return render(
+        request,
+        "pos/_product_modal.html",
+        {
+            "table_code": table_code,
+            "product": product,
+            "attachments": attachments,
+            "orderable": orderable,
+            "modal_config": modal_config,  # <-- CAMBIO AQUÍ: diccionario, no string
         },
     )
 
 
 @require_POST
 def add_to_cart(request: HttpRequest, table_code: str) -> HttpResponse:
-    """Agrega producto al carrito (sesión) vía HTMX."""
+    """Agrega producto al carrito (sesión) vía HTMX/fetch."""
     get_object_or_404(Table, code=table_code, is_active=True)
-    selection = _parse_cart_selection(request)
-    if selection is None:
-        return HttpResponse(status=400)
-    product_id, quantity = selection
 
-    key = _cart_key(table_code)
-    cart = request.session.get(key, {})
-    # Session data is JSON-encoded, so product ids must be stored as strings.
-    product_key = str(product_id)
-    cart[product_key] = min(cart.get(product_key, 0) + quantity, MAX_CART_QTY)
-    request.session[key] = cart
-    request.session.modified = True
+    raw_product_id = request.POST.get("product_id", "")
+    raw_quantity = request.POST.get("quantity", "1")
+    option_values = request.POST.getlist("option_values")
+
+    try:
+        product_id = UUID(str(raw_product_id))
+        quantity = int(raw_quantity)
+    except (TypeError, ValueError, AttributeError):
+        return HttpResponse(status=400)
+
+    if not 1 <= quantity <= MAX_CART_QTY:
+        return HttpResponse(status=400)
+
+    product = Product.objects.select_related("category").filter(pk=product_id).first()
+
+    if product is None:
+        return HttpResponse(status=400)
+
+    if not MenuAvailabilityService.is_product_orderable(product):
+        return HttpResponse(status=400)
+
+    try:
+        selected_options, price_delta = MenuOptionService.validate_selection(
+            product,
+            option_values,
+        )
+    except ValueError:
+        return HttpResponse(status=400)
+
+    unit_price = (product.price + price_delta).quantize(Decimal("0.01"))
+    selected_ids = [str(option["value_id"]) for option in selected_options]
+    line_key = _line_id(product_id, selected_ids)
+
+    lines = _get_cart_lines(request, table_code)
+    existing_line = next(
+        (line for line in lines if line.get("line_id") == line_key),
+        None,
+    )
+
+    if existing_line:
+        existing_line["quantity"] = min(
+            existing_line.get("quantity", 0) + quantity,
+            MAX_CART_QTY,
+        )
+        existing_line["unit_price"] = str(unit_price)
+        existing_line["selected_options"] = selected_options
+    else:
+        lines.append(
+            {
+                "line_id": line_key,
+                "product_id": str(product_id),
+                "quantity": quantity,
+                "option_value_ids": selected_ids,
+                "unit_price": str(unit_price),
+                "selected_options": selected_options,
+            }
+        )
+
+    _save_cart_lines(request, table_code, lines)
     return _render_cart(request, table_code)
 
 
 @require_POST
 def remove_from_cart(request: HttpRequest, table_code: str) -> HttpResponse:
-    """Elimina producto del carrito (sesión) vía HTMX."""
+    """Elimina una línea del carrito (sesión) vía HTMX."""
     get_object_or_404(Table, code=table_code, is_active=True)
-    try:
-        product_key = str(UUID(str(request.POST.get("product_id", ""))))
-    except (TypeError, ValueError, AttributeError):
-        return HttpResponse(status=400)
 
-    key = _cart_key(table_code)
-    cart = request.session.get(key, {})
-    if product_key in cart:
-        del cart[product_key]
-        request.session[key] = cart
-        request.session.modified = True
+    line_id = request.POST.get("line_id", "")
+    lines = _get_cart_lines(request, table_code)
+
+    if line_id:
+        lines = [line for line in lines if line.get("line_id") != line_id]
+    else:
+        # Compatibilidad con eliminación vieja por product_id
+        try:
+            product_key = str(UUID(str(request.POST.get("product_id", ""))))
+        except (TypeError, ValueError, AttributeError):
+            return HttpResponse(status=400)
+
+        lines = [line for line in lines if line.get("product_id") != product_key]
+
+    _save_cart_lines(request, table_code, lines)
     return _render_cart(request, table_code)
 
 
@@ -951,43 +1209,39 @@ def remove_from_cart(request: HttpRequest, table_code: str) -> HttpResponse:
 def checkout_qr(request: HttpRequest, table_code: str) -> HttpResponse:
     """Confirma el pedido y lo envía a cocina."""
     table = get_object_or_404(Table, code=table_code, is_active=True)
-    key = _cart_key(table_code)
-    cart = request.session.get(key, {})
-    if not cart:
-        messages.error(request, "El carrito está vacío")
-        return redirect("menu_public", table_code=table_code)
+    lines = _get_cart_lines(request, table_code)
 
-    items: list[tuple[UUID, int]] = []
-    for product_id, qty in cart.items():
-        try:
-            parsed_id = UUID(str(product_id))
-        except (TypeError, ValueError, AttributeError):
-            continue
-        if not Product.objects.filter(pk=parsed_id, is_available=True).exists():
-            continue
-        items.append((parsed_id, min(int(qty), MAX_CART_QTY)))
-
-    if not items:
-        del request.session[key]
-        request.session.modified = True
+    if not lines:
         messages.error(request, "El carrito está vacío")
         return redirect("menu_public", table_code=table_code)
 
     try:
-        order = OrderService.create_from_items(
+        order = OrderService.create_from_cart_lines(
             table.pk,
-            items,
+            lines,
             notes="Pedido desde QR (autogestión)",
             source=Order.Source.QR,
         )
-    except Exception as e:
-        messages.error(request, f"Error al crear el pedido: {e}")
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("menu_public", table_code=table_code)
+    except Exception as exc:
+        messages.error(request, f"Error al crear el pedido: {exc}")
         return redirect("menu_public", table_code=table_code)
 
-    del request.session[key]
+    request.session.pop(cart_key(table_code), None)
     request.session.modified = True
-    messages.success(request, f"¡Pedido enviado a cocina! Orden #{str(order.pk)[:8]}")
-    return render(request, "pos/order_success.html", {"order": order, "table": table})
+
+    messages.success(
+        request,
+        f"¡Pedido enviado a cocina! Orden #{str(order.pk)[:8]}",
+    )
+
+    return render(
+        request,
+        "pos/order_success.html",
+        {"order": order, "table": table},
+    )
 
 
 @role_required("admin", "waiter")

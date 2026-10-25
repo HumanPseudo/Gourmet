@@ -1,10 +1,11 @@
 {% load currency %}
+
 <div
   id="cart-summary"
   x-data="{ open: false }"
   style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 2px solid #dee2e6; padding: 12px 20px; box-shadow: 0 -4px 12px rgba(0,0,0,0.1); z-index: 1000;"
 >
-  <!-- MODAL -->
+  <!-- MODAL DEL CARRITO -->
   <div
     x-show="open"
     x-transition
@@ -13,7 +14,7 @@
   >
     <div
       @click.away="open = false"
-      style="background: #ffffff; border-radius: 8px; width: 100%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);"
+      style="background: #ffffff; border-radius: 8px; width: 100%; max-width: 560px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);"
     >
       <div
         style="padding: 14px 16px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; background: #f8f9fa;"
@@ -31,7 +32,15 @@
       </div>
 
       <div style="padding: 16px; overflow-y: auto; flex: 1;">
-        {% if cart_items %}
+        {% if has_invalid %}
+          <div
+            style="background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; padding: 10px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 13px;"
+          >
+            Hay productos u opciones no disponibles. Elimínalos para continuar.
+          </div>
+        {% endif %}
+
+        {% if cart_lines %}
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <thead>
               <tr
@@ -45,33 +54,48 @@
               </tr>
             </thead>
             <tbody>
-              {% for item in cart_items %}
-                <tr style="border-bottom: 1px solid #f0f0f0;">
-                  <td style="padding: 10px 0; font-weight: 600; color: #333;">
-                    {{ item.product.name }}
+              {% for line in cart_lines %}
+                <tr
+                  style="border-bottom: 1px solid #f0f0f0; --opacity: {% if line.invalid %}0.65{% else %}1{% endif %};"
+                >
+                  <td style="padding: 10px 0; color: #333;">
+                    <div style="font-weight: 600;">
+                      {{ line.product_name }}
+                      {% if line.invalid %}
+                        <span style="color:#dc3545; font-size:11px; font-weight:700;">
+                          (No disponible)</span
+                        >
+                      {% endif %}
+                    </div>
+                    {% if line.options_label %}
+                      <div style="font-size:12px; color:#6b7280; margin-top:4px;">
+                        {{ line.options_label }}
+                      </div>
+                    {% endif %}
                   </td>
                   <td style="padding: 10px 0; text-align: center; color: #666;">
-                    {{ item.quantity }}
+                    {{ line.quantity }}
                   </td>
                   <td style="padding: 10px 0; text-align: right; color: #666;">
-                    {{ item.product.price|floatformat:2|peso }}
+                    {{ line.unit_price|floatformat:2|peso }}
                   </td>
                   <td
                     style="padding: 10px 0; text-align: right; font-weight: bold; color: #28a745;"
                   >
-                    {{ item.total|floatformat:2|peso }}
+                    {{ line.total|floatformat:2|peso }}
                   </td>
                   <td style="padding: 10px 0; text-align: center;">
                     <form
                       hx-post="{% url 'remove_from_cart' table_code %}"
                       hx-target="#cart-summary"
+                      hx-swap="outerHTML"
                       style="margin: 0; display: inline;"
                     >
                       {% csrf_token %}
                       <input
                         type="hidden"
-                        name="product_id"
-                        value="{{ item.product.id }}"
+                        name="line_id"
+                        value="{{ line.line_id }}"
                       />
                       <button
                         type="submit"
@@ -115,7 +139,7 @@
     </div>
   </div>
 
-  <!-- BARRA INFERIOR -->
+  <!-- BARRA INFERIOR FIJA -->
   <div
     style="max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;"
   >
@@ -145,7 +169,16 @@
         {% csrf_token %}
         <button
           type="submit"
-          style="background: #28a745; color: #ffffff; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer;"
+          {% if has_invalid %}disabled{% endif %}
+          style="
+                            --btn-bg: {% if has_invalid %}#d1d5db{% else %}#28a745{% endif %};
+                            --btn-color: {% if has_invalid %}#6b7280{% else %}#ffffff{% endif %};
+                            --btn-cursor: {% if has_invalid %}not-allowed{% else %}pointer{% endif %};
+                            background: var(--btn-bg);
+                            color: var(--btn-color);
+                            cursor: var(--btn-cursor);
+                            border: none; padding: 10px 20px; border-radius: 6px;
+                            font-weight: bold; font-size: 14px;"
         >
           Confirmar Pedido
         </button>

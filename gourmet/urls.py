@@ -48,6 +48,7 @@ from gourmet.apps.orders.views import (
     pos_floor_status,
     pos_order_json,
     pos_pay,
+    pos_product_options,
     pos_remove_item,
     pos_set_priority,
     pos_set_table,
@@ -97,6 +98,11 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("pos/close/<uuid:order_id>/", pos_close, name="pos_close"),
     path("pos/floor-status/", pos_floor_status, name="pos_floor_status"),
     path("pos/order-json/<uuid:order_id>/", pos_order_json, name="pos_order_json"),
+    path(
+        "pos/product-options/<uuid:product_id>/",
+        pos_product_options,
+        name="pos_product_options",
+    ),
     path(
         "pos/remove-item/<uuid:order_id>/<uuid:item_id>/",
         pos_remove_item,
@@ -155,6 +161,11 @@ urlpatterns: list[URLPattern | URLResolver] = [
         "menu/mesa/<str:table_code>/add/",
         order_views.add_to_cart,
         name="add_to_cart",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/producto/<uuid:product_id>/modal/",
+        order_views.product_modal_public,
+        name="product_modal_public",
     ),
     path(
         "menu/mesa/<str:table_code>/remove/",
