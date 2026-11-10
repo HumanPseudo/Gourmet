@@ -20,35 +20,35 @@
           <a
             href="{% url 'pos' %}"
             style="background: #007bff; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
-            >🖥 POS</a
+            >POS</a
           >
           <a
             href="{% url 'kitchen' %}"
             style="background: #17a2b8; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
-            >🍳 Cocina</a
+            >Cocina</a
           >
           <a
             href="{% url 'order_list' %}"
             style="background: #28a745; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
-            >📋 Órdenes</a
+            >Órdenes</a
           >
           {% if user.is_superuser or user.role.name == 'admin' %}
             <a
               href="{% url 'dashboard' %}"
               style="background: #ffc107; color: #333; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
-              >📊 Dashboard</a
+              >Dashboard</a
             >
             <a
               href="{% url 'inventory_list' %}"
               style="background: #6c757d; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
-              >📦 Inventario</a
+              >Inventario</a
             >
           {% endif %}
           {% if user.is_superuser %}
             <a
               href="{% url 'admin:index' %}"
               style="background: #343a40; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
-              >⚙ Admin Django</a
+              >Admin Django</a
             >
           {% endif %}
         {% endif %}
