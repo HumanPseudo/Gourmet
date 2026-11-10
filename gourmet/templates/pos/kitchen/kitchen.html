@@ -46,7 +46,7 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:8px;">
         {% for item in table_items %}
-          {% include "pos/_kitchen_card.html" %}
+          {% include "pos/kitchen/_kitchen_card.html" %}
         {% endfor %}
       </div>
     {% empty %}

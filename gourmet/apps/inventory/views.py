@@ -50,7 +50,7 @@ def inventory_list(request):
     total_value = sum((i.stock * i.cost_price) for i in items if i.cost_price)
     return render(
         request,
-        "pos/inventory.html",
+        "pos/inventory/inventory.html",
         {"items": items, "low_stock": low_stock, "total_value": total_value},
     )
 
@@ -110,7 +110,7 @@ def movement_list(request):
     movements = InventoryService.list_movements(item_id=item_id)
     return render(
         request,
-        "pos/movements.html",
+        "pos/inventory/movements.html",
         {"movements": movements},
     )
 
@@ -119,7 +119,7 @@ def movement_list(request):
 def recipe_list(request):
     return render(
         request,
-        "pos/recipes.html",
+        "pos/inventory/recipes.html",
         {"recipes": InventoryService.list_recipes()},
     )
 
@@ -138,7 +138,7 @@ def used_today(request):
         if m.item.cost_price:
             total_cost += m.quantity * m.item.cost_price
 
-    return render(request, "pos/used_today.html", {
+    return render(request, "pos/inventory/used_today.html", {
         "movements": movements,
         "summary": dict(sorted(summary.items())),
         "total_cost": total_cost,

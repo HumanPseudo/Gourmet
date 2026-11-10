@@ -14,14 +14,17 @@ def error_view(request: HttpRequest) -> t.NoReturn:
     raise ValueError
 
 
-# Test URLconf that extends the base project URLs
+# Test URLconf that extends the base project URLs.
+# Mirror the project's custom 500 handler so the error template resolves the
+# same way it does in production (see gourmet/urls.py).
+handler500 = "gourmet.views.server_error"
 urlpatterns = [path("error/", error_view)]
 
 
 def test_404_page(client: Client) -> None:
     response = client.get("/non-existent-page/")
     assert response.status_code == 404
-    assertTemplateUsed(response, "404.html")
+    assertTemplateUsed(response, "errors/404.html")
 
 
 def test_500_page(client: Client, settings: SettingsWrapper) -> None:
@@ -29,4 +32,4 @@ def test_500_page(client: Client, settings: SettingsWrapper) -> None:
     client.raise_request_exception = False
     response = client.get("/error/")
     assert response.status_code == 500
-    assertTemplateUsed(response, "500.html")
+    assertTemplateUsed(response, "errors/500.html")
