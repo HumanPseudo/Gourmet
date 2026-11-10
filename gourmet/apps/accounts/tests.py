@@ -218,3 +218,74 @@ class AdminEndpointTests(TestCase):
         user_token = AuthToken.create_token(user)
         result = self._get("/api/admin/roles", token=user_token.key)
         assert result["status"] == 403
+
+
+class UserRolePropertyTests(TestCase):
+    """Role convenience properties used to gate navbar/menu links."""
+
+    def _staff(self, role_name: str | None) -> User:
+        role = Role.objects.create(name=role_name) if role_name else None
+        return User.objects.create_user(
+            email=f"{role_name or 'none'}@test.com",
+            password="pass1234",
+            is_staff=True,
+            role=role,
+        )
+
+    def test_admin_role(self) -> None:
+        user = self._staff("admin")
+        assert user.is_admin
+        assert not user.is_waiter
+        assert not user.is_kitchen
+
+    def test_waiter_role(self) -> None:
+        user = self._staff("waiter")
+        assert user.is_waiter
+        assert not user.is_admin
+        assert not user.is_kitchen
+
+    def test_kitchen_role(self) -> None:
+        user = self._staff("kitchen")
+        assert user.is_kitchen
+        assert not user.is_admin
+        assert not user.is_waiter
+
+    def test_superuser_is_admin_without_role(self) -> None:
+        user = User.objects.create_superuser(
+            email="root@test.com", password="pass1234"
+        )
+        assert user.is_admin
+        assert not user.is_waiter
+        assert not user.is_kitchen
+
+    def test_role_requires_staff(self) -> None:
+        role = Role.objects.create(name="admin")
+        user = User.objects.create_user(
+            email="inactive-staff@test.com", password="pass1234", role=role
+        )
+        assert not user.is_admin
+
+
+class NavbarVisibilityTests(TestCase):
+    """The home page must only link to areas the role can actually open,
+    so a kitchen user no longer sees POS/Floor links that return 403."""
+
+    def _staff(self, role_name: str) -> User:
+        role = Role.objects.create(name=role_name)
+        return User.objects.create_user(
+            email=f"{role_name}@test.com",
+            password="pass1234",
+            is_staff=True,
+            role=role,
+        )
+
+    def test_kitchen_user_sees_kitchen_not_pos(self) -> None:
+        self.client.force_login(self._staff("kitchen"))
+        body = self.client.get("/").content.decode()
+        assert 'href="/pos/kitchen/"' in body
+        assert 'href="/pos/"' not in body
+
+    def test_waiter_user_sees_pos(self) -> None:
+        self.client.force_login(self._staff("waiter"))
+        body = self.client.get("/").content.decode()
+        assert 'href="/pos/"' in body

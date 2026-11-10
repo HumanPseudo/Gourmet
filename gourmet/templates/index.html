@@ -17,11 +17,14 @@
 
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         {% if user.is_staff %}
+          {% if user.is_admin or user.is_waiter %}
           <a
             href="{% url 'pos' %}"
             style="background: #007bff; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
             >POS</a
           >
+          {% endif %}
+          {% if user.is_admin or user.is_waiter or user.is_kitchen %}
           <a
             href="{% url 'kitchen' %}"
             style="background: #17a2b8; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
@@ -32,7 +35,8 @@
             style="background: #28a745; color: #fff; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
             >Órdenes</a
           >
-          {% if user.is_superuser or user.role.name == 'admin' %}
+          {% endif %}
+          {% if user.is_admin %}
             <a
               href="{% url 'dashboard' %}"
               style="background: #ffc107; color: #333; padding: 20px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; flex: 1; text-align: center; min-width: 140px;"
