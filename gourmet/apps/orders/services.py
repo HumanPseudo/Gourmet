@@ -452,9 +452,19 @@ class OrderService:
                 f"Percentages must sum to 100, got {total_pct}"
             )
         splits: list[BillSplit] = []
-        for data in percentages_data:
+        # Last split absorbs the rounding remainder so the parts sum to
+        # order.total exactly (same approach as split_equal).
+        remaining = order.total
+        last = len(percentages_data) - 1
+        for i, data in enumerate(percentages_data):
             pct = Decimal(str(data["percentage"]))
-            amount = (order.total * pct / Decimal("100")).quantize(Decimal("0.01"))
+            if i == last:
+                amount = remaining
+            else:
+                amount = (order.total * pct / Decimal("100")).quantize(
+                    Decimal("0.01")
+                )
+            remaining -= amount
             split = BillSplit.objects.create(
                 order=order,
                 label=data["label"],
@@ -503,9 +513,17 @@ class OrderService:
     @transaction.atomic
     def mark_split_paid(
         split_id: UUID, method: str, reference: str = "", tip: Decimal | None = None,
+        order_id: UUID | None = None,
     ) -> BillSplit:
-        """Mark a split as paid and create a Payment on the order."""
-        split = get_object_or_404(BillSplit, pk=split_id)
+        """Mark a split as paid and create a Payment on the order.
+
+        ``order_id`` scopes the lookup so a split can only be paid through
+        its own order's endpoint (prevents cross-order tampering).
+        """
+        lookup = {"pk": split_id}
+        if order_id is not None:
+            lookup["order_id"] = order_id
+        split = get_object_or_404(BillSplit, **lookup)
         if split.paid:
             raise ValueError("Split is already paid")
         split.paid = True
@@ -521,9 +539,12 @@ class OrderService:
 
     @staticmethod
     @transaction.atomic
-    def delete_split(split_id: UUID) -> None:
-        """Remove a split."""
-        split = get_object_or_404(BillSplit, pk=split_id)
+    def delete_split(split_id: UUID, order_id: UUID | None = None) -> None:
+        """Remove a split. ``order_id`` scopes the lookup to its own order."""
+        lookup = {"pk": split_id}
+        if order_id is not None:
+            lookup["order_id"] = order_id
+        split = get_object_or_404(BillSplit, **lookup)
         if split.paid:
             raise ValueError("Cannot delete a paid split")
         split.delete()

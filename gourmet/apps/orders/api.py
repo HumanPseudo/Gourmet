@@ -267,6 +267,7 @@ def pay_split(
     try:
         split = OrderService.mark_split_paid(
             split_id, payload.method, payload.reference, payload.tip,
+            order_id=order_id,
         )
     except ValueError as e:
         return 400, {"detail": str(e)}
@@ -282,7 +283,7 @@ def delete_split(
     request: HttpRequest, order_id: UUID, split_id: UUID,
 ) -> tuple[int, MessageOut]:
     try:
-        OrderService.delete_split(split_id)
+        OrderService.delete_split(split_id, order_id=order_id)
     except ValueError as e:
         return 400, MessageOut(detail=str(e))
     return 200, MessageOut(detail="Split deleted")
