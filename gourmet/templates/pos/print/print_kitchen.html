@@ -13,7 +13,7 @@
   @media print { .no-print { display: none; } }
 </style></head><body>
   <div class="hdr">
-    <h1>🍳 COCINA</h1>
+    <h1>COCINA</h1>
     <p><strong>Orden #{{ order.pk|stringformat:"s"|slice:":8" }}</strong></p>
     {% if order.table %}<p><strong>Mesa:</strong> {{ order.table.code }}</p>{% endif %}
     <p>{{ now|date:"d/m/Y H:i" }}</p>
@@ -22,14 +22,14 @@
   <div class="item">
     <span class="qty">{{ item.quantity }}x</span>
     <span class="name">{{ item.product_name }}</span>
-    {% if item.notes %}<div class="notes">📝 {{ item.notes }}</div>{% endif %}
+    {% if item.notes %}<div class="notes">{{ item.notes }}</div>{% endif %}
   </div>
   {% endfor %}
   <div class="footer">
     <p>Gracias — Gourmet POS</p>
   </div>
   <div class="no-print" style="text-align:center;margin-top:12px;">
-    <button class="print-btn" style="padding:8px 24px;font-size:14px;cursor:pointer;">🖨 Imprimir</button>
+    <button class="print-btn" style="padding:8px 24px;font-size:14px;cursor:pointer;">Imprimir</button>
   </div>
   <script src="{% static 'print.js' %}"></script>
 </body></html>

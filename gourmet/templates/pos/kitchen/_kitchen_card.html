@@ -37,10 +37,10 @@
     <span
       class="timer timer-{% if item.elapsed > 20 %}bad{% elif item.elapsed > 10 %}warn{% else %}ok{% endif %}"
     >
-      ⏱ {{ item.elapsed }} min
+      {{ item.elapsed }} min
     </span>
     {% if item.preparing is not None %}
-      <span class="timer timer-warn">🍳 {{ item.preparing }} min</span>
+      <span class="timer timer-warn">{{ item.preparing }} min</span>
     {% endif %}
   </div>
   {% if item.notes %}

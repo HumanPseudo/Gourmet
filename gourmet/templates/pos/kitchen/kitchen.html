@@ -26,7 +26,7 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
 
 <div style="padding:20px;max-width:1200px;margin:0 auto;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <h1 style="margin:0;font-size:22px;">🍳 Cocina</h1>
+    <h1 style="margin:0;font-size:22px;">Cocina</h1>
     <span style="font-size:12px;color:#999;">auto-actualizando cada 15s</span>
   </div>
 
@@ -39,18 +39,18 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
   <div id="kitchen-grid" hx-get="{% url 'kitchen' %}" hx-trigger="every 15s" hx-target="body" hx-swap="innerHTML">
     {% for table_code, table_items in groups.items %}
       <div class="table-header">
-        🪑 Mesa {{ table_code }}
+        Mesa {{ table_code }}
         <span style="font-weight:400;font-size:13px;color:#888;margin-left:8px;">
           {{ table_items|length }} item{{ table_items|length|pluralize:",s" }}
         </span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:8px;">
         {% for item in table_items %}
-          {% include "pos/_kitchen_card.html" %}
+          {% include "pos/kitchen/_kitchen_card.html" %}
         {% endfor %}
       </div>
     {% empty %}
-      <div style="padding:60px;text-align:center;color:#999;font-size:16px;">✅ Todos los items están listos o servidos</div>
+      <div style="padding:60px;text-align:center;color:#999;font-size:16px;">Todos los items están listos o servidos</div>
     {% endfor %}
   </div>
 </div>

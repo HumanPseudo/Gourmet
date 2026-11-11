@@ -75,7 +75,7 @@ def pos(request):
             low_stock.add(str(r.product_id))
     return render(
         request,
-        "pos/pos.html",
+        "pos/terminal/pos.html",
         {
             "tables": tables,
             "tax_choices": tax_choices,
@@ -330,7 +330,7 @@ def floor_view(request):
 
     return render(
         request,
-        "pos/floor_view.html",
+        "pos/floor/floor_view.html",
         {
             "layout_size": layout_size,
             "positioned": positioned,
@@ -365,7 +365,7 @@ def kitchen(request):
         groups.setdefault(table, []).append(i)
     return render(
         request,
-        "pos/kitchen.html",
+        "pos/kitchen/kitchen.html",
         {
             "items": items,
             "groups": groups,
@@ -388,7 +388,7 @@ def order_list(request):
     for o in orders:
         o.total_paid_ = sum(p.amount for p in o.payments.all())
         o.pending_ = o.total - o.total_paid_
-    return render(request, "pos/orders.html", {"orders": orders})
+    return render(request, "pos/orders/orders.html", {"orders": orders})
 
 
 @role_required("waiter", "kitchen", "admin")
@@ -408,7 +408,7 @@ def order_detail(request, order_id):
     ).first() or AuthToken.create_token(request.user)
     return render(
         request,
-        "pos/order_detail.html",
+        "pos/orders/order_detail.html",
         {
             "order": order,
             "total_paid": total_paid,
@@ -446,7 +446,7 @@ def create_order(request):
 
     return render(
         request,
-        "pos/create_order.html",
+        "pos/orders/create_order.html",
         {"tables": tables, "products": products},
     )
 
@@ -538,7 +538,7 @@ def dashboard(request):
 
     return render(
         request,
-        "pos/dashboard.html",
+        "pos/reports/dashboard.html",
         {
             "today": today,
             "desde": desde,
@@ -602,7 +602,7 @@ def close_report(request):
     history = DailyClose.objects.all()[:20]
     return render(
         request,
-        "pos/close_report.html",
+        "pos/reports/close_report.html",
         {
             "today": today,
             "order_count": orders.count(),
@@ -732,7 +732,7 @@ def print_receipt(request, order_id):
         tax_totals[rate_pct] = tax_totals.get(rate_pct, Decimal("0")) + tax
     return render(
         request,
-        "pos/print_receipt.html",
+        "pos/print/print_receipt.html",
         {
             "order": order,
             "tax_totals": tax_totals,
@@ -752,7 +752,7 @@ def print_kitchen(request, order_id):
     )
     return render(
         request,
-        "pos/print_kitchen.html",
+        "pos/print/print_kitchen.html",
         {"order": order, "now": django_tz.now()},
     )
 
@@ -776,7 +776,7 @@ def pos_set_priority(request, item_id):
     item.preparing = _mins(now - item.started_at) if item.started_at else None
     item.table_code = item.order.table.code if item.order.table else ""
     html = render_to_string(
-        "pos/_kitchen_card.html",
+        "pos/kitchen/_kitchen_card.html",
         {
             "item": item,
             "is_admin": True,
@@ -807,7 +807,7 @@ def pos_update_item_status(request, order_id, item_id):
     item.preparing = _mins(now - item.started_at) if item.started_at else None
     item.table_code = item.order.table.code if item.order.table else ""
     html = render_to_string(
-        "pos/_kitchen_card.html",
+        "pos/kitchen/_kitchen_card.html",
         {
             "item": item,
             "is_admin": (
@@ -825,7 +825,7 @@ def audit_logs(request):
     from gourmet.apps.accounts.models import AuditLog
 
     logs = AuditLog.objects.select_related("user").all()[:200]
-    return render(request, "pos/audit_logs.html", {"logs": logs})
+    return render(request, "pos/reports/audit_logs.html", {"logs": logs})
 
 
 MAX_CART_QTY = 99
@@ -881,7 +881,7 @@ def _parse_cart_selection(request: HttpRequest) -> tuple[UUID, int] | None:
 def _render_cart(request: HttpRequest, table_code: str) -> HttpResponse:
     return HttpResponse(
         render_to_string(
-            "pos/_cart_summary.html",
+            "pos/customer/_cart_summary.html",
             _cart_context(request, table_code),
             request=request,
         )
@@ -900,7 +900,7 @@ def menu_public(request: HttpRequest, table_code: str) -> HttpResponse:
     sorted_cats = sorted(categories, key=lambda c: c.sort_order)
     return render(
         request,
-        "pos/customer_menu.html",
+        "pos/customer/customer_menu.html",
         {
             "table": table,
             "products": products,
@@ -990,7 +990,7 @@ def checkout_qr(request: HttpRequest, table_code: str) -> HttpResponse:
         request, f"¡Pedido enviado a cocina! Orden #{str(order.pk)[:8]}"
     )
     return render(
-        request, "pos/order_success.html", {"order": order, "table": table}
+        request, "pos/customer/order_success.html", {"order": order, "table": table}
     )
 
 
@@ -1019,7 +1019,7 @@ def print_qr_tables(request: HttpRequest) -> HttpResponse:
     ]
     return render(
         request,
-        "pos/print_qr_tables.html",
+        "pos/print/print_qr_tables.html",
         {
             "tables": tables_with_qr,
             "business_name": settings.BUSINESS_NAME,

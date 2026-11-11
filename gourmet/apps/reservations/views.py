@@ -65,7 +65,7 @@ def reservation_calendar(request):
 
     return render(
         request,
-        "pos/reservation_calendar.html",
+        "pos/reservations/reservation_calendar.html",
         {
             "weeks": weeks,
             "month_name": first_day.strftime("%B %Y"),
@@ -126,7 +126,7 @@ def reservation_list(request):
     tables = Table.objects.filter(is_active=True).order_by("code")
     return render(
         request,
-        "pos/reservation_list.html",
+        "pos/reservations/reservation_list.html",
         {
             "reservations": reservations,
             "tables": tables,
