@@ -70,8 +70,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django_alive.middleware.healthcheck_bypass_host_check",
     "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -209,7 +209,7 @@ SECURE_BROWSER_XSS_FILTER = True  # Deprecated in Django 6.0 but explicit
 # https://docs.djangoproject.com/en/6.0/ref/settings/#secure-csp
 SECURE_CSP: dict[str, list[str]] = {
     "default-src": [CSP.SELF],
-    "script-src": [CSP.SELF, "'unsafe-eval'"],
+    "script-src": [CSP.SELF, "'unsafe-eval'", "'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='"],
     "style-src": [CSP.SELF, "'unsafe-inline'"],
     "img-src": [CSP.SELF, "data:"],
 }
