@@ -209,6 +209,32 @@ class TableLayoutViewTests(TestCase):
         )
         assert '"pos_x": 30' in response.content.decode()
 
+    def test_save_positions_duplicate_table_returns_400_and_preserves(
+        self,
+    ) -> None:
+        # Seed a valid layout item.
+        TableLayoutService.save_positions(
+            self.layout,
+            [{"table_id": str(self.table.pk), "pos_x": 5, "pos_y": 5}],
+        )
+        # A duplicate table_id violates the unique constraint. The request
+        # must 400 (not 500) and, thanks to the atomic save, the existing
+        # item must survive the failed write (no data loss).
+        response = self.client.post(
+            reverse("floor_layout_save_positions", args=[self.layout.pk]),
+            data=json.dumps(
+                {
+                    "items": [
+                        {"table_id": str(self.table.pk), "pos_x": 1, "pos_y": 1},
+                        {"table_id": str(self.table.pk), "pos_x": 2, "pos_y": 2},
+                    ]
+                }
+            ),
+            content_type="application/json",
+        )
+        assert response.status_code == 400
+        assert self.layout.items.count() == 1
+
     def test_delete_view(self) -> None:
         response = self.client.post(
             reverse("floor_layout_delete", args=[self.layout.pk])

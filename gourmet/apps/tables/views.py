@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from django.contrib import messages
+from django.db import IntegrityError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -102,7 +103,7 @@ def table_layout_save_positions(request, layout_id):
     items = data.get("items", [])
     try:
         TableLayoutService.save_positions(layout, items)
-    except (KeyError, TypeError, ValueError) as e:
+    except (KeyError, TypeError, ValueError, IntegrityError) as e:
         return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"status": "saved", "count": len(items)})
 

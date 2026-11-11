@@ -699,8 +699,13 @@ def split_order(request, order_id):
         table=order.table,
         notes=f"Split from {str(order.pk)[:8]}",
     )
+    # Count before update: the queryset filters on order=order, so after the
+    # rows are moved out it would re-evaluate to 0.
+    moved = items_to_move.count()
     items_to_move.update(order=new_order)
     OrderService.checkout(new_order.pk)
+    # Re-checkout the original too, or its totals still include the moved items.
+    OrderService.checkout(order.pk)
     new_order.refresh_from_db()
     log_audit(
         request,
@@ -710,7 +715,7 @@ def split_order(request, order_id):
     return JsonResponse(
         {
             "new_order_id": str(new_order.pk),
-            "moved": items_to_move.count(),
+            "moved": moved,
         }
     )
 

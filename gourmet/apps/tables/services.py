@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
+from django.db import transaction
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 
@@ -79,6 +80,7 @@ class TableLayoutService:
         return layout
 
     @staticmethod
+    @transaction.atomic
     def save_positions(
         layout: TableLayout, items: Sequence[dict[str, Any]]
     ) -> None:
