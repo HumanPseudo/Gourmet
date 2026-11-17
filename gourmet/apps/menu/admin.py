@@ -147,10 +147,11 @@ class ProductAdmin(admin.ModelAdmin[Product]):
         "is_available",
         "tags_list",
         "sort_order",
+        "requires_preparation",
     )
     list_display_links = ("name",)
-    list_editable = ("price", "is_available", "sort_order")
-    list_filter = ("category", "is_available", "tags")
+    list_editable = ("price", "is_available", "sort_order", "requires_preparation")
+    list_filter = ("category", "is_available", "tags", "requires_preparation")
     search_fields = ("name", "description")
     filter_horizontal = ("tags",)
     readonly_fields = ("image_preview",)
@@ -167,6 +168,7 @@ class ProductAdmin(admin.ModelAdmin[Product]):
                     "tax_type",
                     "is_available",
                     "sort_order",
+                    "requires_preparation",
                 )
             },
         ),

@@ -154,6 +154,14 @@ class Config(GoodConf):
         ),
     )
 
+    # === POS Settings ===
+    AUTO_CLOSE_MINUTES: int = Field(
+        default=30,
+        description=(
+            "Minutos tras pago y todo servido para cerrar la mesa automáticamente"
+        ),
+    )
+
     model_config = {"default_files": ["gourmet.yml"]}
 
 

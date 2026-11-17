@@ -1,0 +1,123 @@
+{% load currency %}
+
+<section style="margin-bottom:28px;">
+  <h2 style="font-size:17px;color:#1f2937;margin-bottom:10px;">
+    ✅ Listos para entregar ({{ to_serve|length }})
+  </h2>
+  <div
+    style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;"
+  >
+    {% for item in to_serve %}
+      <div
+        style="
+        --card-border: {% if item.status == 'ready' %}#28a745{% else %}#dee2e6{% endif %};
+        background:#fff;border:2px solid var(--card-border);border-radius:10px;padding:14px;"
+      >
+        <div
+          style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"
+        >
+          <strong style="font-size:14px;color:#1f2937;">{{ item.table_code }}</strong>
+          <span
+            style="
+            --badge-bg: {% if item.status == 'ready' %}#28a745{% else %}#6c757d{% endif %};
+            background:var(--badge-bg);color:#fff;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;"
+          >
+            {% if item.status == 'ready' %}Listo{% else %}Sin preparación{% endif %}
+          </span>
+        </div>
+        <div style="font-size:16px;font-weight:700;color:#1f2937;">
+          {{ item.quantity }}x {{ item.product_name }}
+        </div>
+        {% include "pos/_order_item_options.html" with item=item %}
+        <div style="display:flex;gap:6px;margin-top:10px;">
+          <button
+            type="button"
+            hx-post="{% url 'pos_serve_item' item.order_id item.id %}"
+            hx-target="#to-serve-board"
+            hx-swap="innerHTML"
+            style="flex:1;background:#0d6efd;color:#fff;border:none;padding:8px;border-radius:6px;font-weight:700;cursor:pointer;"
+          >
+            🍽 Entregar
+          </button>
+          {% if item.status == 'ready' %}
+            <button
+              type="button"
+              class="js-cancel-ready"
+              data-url="{% url 'pos_cancel_ready' item.order_id item.id %}"
+              style="background:#dc3545;color:#fff;border:none;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;"
+              title="Cancelar item listo (requiere motivo)"
+            >
+              🗑
+            </button>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <p
+        style="grid-column:1/-1;text-align:center;color:#6b7280;background:#f9fafb;border-radius:10px;padding:20px;"
+      >
+        Nada pendiente de entregar.
+      </p>
+    {% endfor %}
+  </div>
+</section>
+
+<section>
+  <h2 style="font-size:17px;color:#1f2937;margin-bottom:10px;">
+    ✏️ Items pendientes (modificar / cancelar)
+  </h2>
+  <div
+    style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;"
+  >
+    {% for item in editable %}
+      <div
+        style="background:#fff;border:2px solid #dee2e6;border-radius:10px;padding:14px;"
+      >
+        <div
+          style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"
+        >
+          <strong style="font-size:14px;color:#1f2937;">{{ item.table_code }}</strong>
+          <span
+            style="background:#6c757d;color:#fff;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;"
+          >
+            Recibido
+          </span>
+        </div>
+        <div style="font-size:15px;font-weight:700;color:#1f2937;">
+          {{ item.quantity }}x {{ item.product_name }}
+          <span style="font-weight:400;color:#6b7280;font-size:12px;">
+            {{ item.product_price|floatformat:2|peso }}
+          </span>
+        </div>
+        {% include "pos/_order_item_options.html" with item=item %}
+        <div style="display:flex;gap:6px;margin-top:10px;">
+          {% if item.product_id %}
+            <button
+              type="button"
+              hx-get="{% url 'product_modal_public' item.table_code item.product_id %}?edit_item={{ item.id }}"
+              hx-target="#mesero-modal-container"
+              hx-swap="innerHTML"
+              style="flex:1;background:#007bff;color:#fff;border:none;padding:8px;border-radius:6px;cursor:pointer;font-size:12px;"
+            >
+              ✏️ Modificar
+            </button>
+          {% endif %}
+          <button
+            type="button"
+            class="js-cancel-pending"
+            data-url="{% url 'pos_remove_item' item.order_id item.id %}"
+            style="flex:1;background:#dc3545;color:#fff;border:none;padding:8px;border-radius:6px;cursor:pointer;font-size:12px;"
+          >
+            🗑 Cancelar
+          </button>
+        </div>
+      </div>
+      {% empty %}
+      <p
+        style="grid-column:1/-1;text-align:center;color:#6b7280;background:#f9fafb;border-radius:10px;padding:20px;"
+      >
+        No hay items pendientes.
+      </p>
+    {% endfor %}
+  </div>
+</section>

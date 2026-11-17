@@ -171,7 +171,16 @@ def pos_pay(request, order_id):
 @require_POST
 def pos_add_items(request, order_id):
     data = json.loads(request.body)
-    order = get_object_or_404(Order, pk=order_id, status=Order.Status.OPEN)
+    order = get_object_or_404(
+        Order.objects.prefetch_related("items"),
+        pk=order_id,
+        status=Order.Status.OPEN,
+    )
+    if not OrderService.can_staff_add(order):
+        return JsonResponse(
+            {"error": "Orden ya servida: crea una nueva orden"},
+            status=400,
+        )
     for item in data.get("items", []):
         _add_pos_item(order, item)
     log_audit(request, "order.items_added", f"Order {str(order_id)[:8]}")
@@ -225,25 +234,37 @@ def pos_set_table(request, order_id):
 
 @role_required("waiter", "admin")
 def pos_floor_status(request):
+    OrderService.auto_close_due_tables()
     layout = (
         TableLayout.objects.filter(is_active=True)
         .prefetch_related("items__table")
         .first()
     )
-    open_order_by_table = dict(
-        Order.objects.filter(
-            status=Order.Status.OPEN, table_id__isnull=False
-        ).values_list("table_id", "id")
-    )
+    open_orders_by_table: dict = {}
+    for o in (
+        Order.objects.filter(status=Order.Status.OPEN, table_id__isnull=False)
+        .prefetch_related("items", "payments")
+        .order_by("created_at")
+    ):
+        open_orders_by_table.setdefault(o.table_id, []).append(o)
 
     def _table_json(table, pos_x=None, pos_y=None, shape=None, rotation=None):
-        order_id = open_order_by_table.get(table.id)
+        orders = open_orders_by_table.get(table.id, [])
+        total = Decimal("0.00")
+        paid = Decimal("0.00")
+        for o in orders:
+            total += o.total
+            paid += sum((p.amount for p in o.payments.all()), Decimal("0.00"))
         return {
             "table_id": str(table.id),
             "code": table.code,
             "capacity": table.capacity,
             "status": table.status,
-            "order_id": str(order_id) if order_id else None,
+            "order_id": str(orders[-1].pk) if orders else None,
+            "order_count": len(orders),
+            "bill_total": str(total),
+            "bill_paid": str(paid),
+            "bill_remaining": str(max(total - paid, Decimal("0.00"))),
             "pos_x": pos_x,
             "pos_y": pos_y,
             "shape": shape,
@@ -262,14 +283,12 @@ def pos_floor_status(request):
                     item.table, item.pos_x, item.pos_y, item.shape, item.rotation
                 )
             )
-
     unplaced = [
         _table_json(t)
         for t in Table.objects.filter(is_active=True)
         .exclude(pk__in=placed_ids)
         .order_by("code")
     ]
-
     no_table_orders = [
         {
             "order_id": str(o.pk),
@@ -281,7 +300,6 @@ def pos_floor_status(request):
             status=Order.Status.OPEN, table_id__isnull=True
         ).order_by("created_at")
     ]
-
     return JsonResponse(
         {
             "layout": layout_json,
@@ -356,7 +374,7 @@ def floor_view(request):
 
 @role_required("waiter", "kitchen", "admin")
 def kitchen(request):
-    items = OrderService.list_kitchen()
+    items = list(OrderService.list_kitchen())
     now = datetime.now(UTC)
     pending = preparing = ready = 0
     for i in items:
@@ -383,8 +401,10 @@ def kitchen(request):
         {
             "items": items,
             "groups": groups,
-            "is_admin": request.user.is_superuser
-            or (request.user.role and request.user.role.name == "admin"),
+            "is_admin": (
+                request.user.is_superuser
+                or (request.user.role and request.user.role.name == "admin")
+            ),
             "pending_count": pending,
             "preparing_count": preparing,
             "ready_count": ready,
@@ -808,9 +828,19 @@ def pos_update_item_status(request, order_id, item_id):
     except json.JSONDecodeError:
         data = request.POST
     status = data.get("status")
+    reason = data.get("reason", "")
     if not status:
         return JsonResponse({"error": "status is required"}, status=400)
-    OrderService.set_item_status(order_id, item_id, status)
+    try:
+        OrderService.set_item_status(
+            order_id,
+            item_id,
+            status,
+            actor=_actor_role(request),
+            reason=reason,
+        )
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400)
     item = get_object_or_404(
         OrderItem.objects.select_related("order__table"),
         pk=item_id,
@@ -869,6 +899,162 @@ def _options_label(selected_options: list[dict]) -> str:
     return "; ".join(
         f"{option.get('group_name')}: {option.get('value_name')}"
         for option in selected_options
+    )
+
+
+STATUS_LABELS: dict[str, str] = {
+    OrderItem.Status.PENDING: "Recibido",
+    OrderItem.Status.PREPARING: "En preparación",
+    OrderItem.Status.READY: "Listo para entregar",
+    OrderItem.Status.SERVED: "Entregado",
+}
+
+
+def _qr_session_key(table_code: str) -> str:
+    return "qr_orders"
+
+
+def _session_bill(request: HttpRequest, table_code: str) -> dict[str, Any]:
+    """Suma de las cuentas QR de esta sesión EN ESTA MESA."""
+    ids = request.session.get(_qr_session_key(table_code), [])
+    orders = (
+        Order.objects.filter(
+            pk__in=ids,
+            source=Order.Source.QR,
+            table__code=table_code,
+            status=Order.Status.OPEN,
+        )
+        .prefetch_related("payments")
+        .order_by("created_at")
+    )
+    total = Decimal("0.00")
+    paid = Decimal("0.00")
+    count = 0
+    for order in orders:
+        count += 1
+        total += order.total
+        paid += sum((p.amount for p in order.payments.all()), Decimal("0.00"))
+    return {
+        "bill_count": count,
+        "bill_total": total,
+        "bill_paid": paid,
+        "bill_remaining": max(total - paid, Decimal("0.00")),
+    }
+
+
+def _register_qr_order(request: HttpRequest, table_code: str, order_id: UUID) -> None:
+    key = _qr_session_key(table_code)
+    ids = request.session.get(key, [])
+    if str(order_id) not in ids:
+        ids.append(str(order_id))
+    request.session[key] = ids
+    request.session.modified = True
+
+
+def _get_qr_order(request: HttpRequest, table_code: str, order_id: UUID) -> Order:
+    order = get_object_or_404(
+        Order.objects.select_related("table").prefetch_related("items", "payments"),
+        pk=order_id,
+        source=Order.Source.QR,
+    )
+    _register_qr_order(request, table_code, order.pk)
+    return order
+
+
+def _overall_label(order: Order) -> str:
+    progress = OrderService.order_progress(order)
+    if progress <= 0:
+        return "Recibido"
+    if progress == 1:
+        return "En preparación"
+    if progress == 2:
+        return "Listo para entregar"
+    return "Entregado"
+
+
+def _order_status_context(
+    request: HttpRequest,
+    table_code: str,
+    order: Order,
+    error: str = "",
+) -> dict[str, Any]:
+    items: list[Any] = list(
+        order.items.exclude(status=OrderItem.Status.CANCELLED).order_by("created_at")
+    )
+    for item in items:
+        item.status_label = STATUS_LABELS.get(item.status, item.status)
+        item.can_modify = item.status == OrderItem.Status.PENDING
+        item.can_cancel = item.status == OrderItem.Status.PENDING
+    return {
+        "order": order,
+        "table_code": table_code,
+        "items": items,
+        "cancelled_count": order.items.filter(
+            status=OrderItem.Status.CANCELLED
+        ).count(),
+        "can_add": OrderService.can_customer_add(order),
+        "paid": OrderService.is_order_paid(order),
+        "overall_label": _overall_label(order),
+        "error": error,
+        **_session_bill(request, table_code),
+    }
+
+
+def _render_order_status(
+    request: HttpRequest,
+    table_code: str,
+    order: Order,
+    full_page: bool = False,
+    error: str = "",
+) -> HttpResponse:
+    ctx = _order_status_context(request, table_code, order, error)
+    if request.headers.get("HX-Request") or not full_page:
+        return HttpResponse(
+            render_to_string("pos/_order_status_box.html", ctx, request=request)
+        )
+    return render(request, "pos/customer_order_status.html", ctx)
+
+
+def _actor_role(request: HttpRequest) -> str:
+    if request.user.is_superuser:
+        return "admin"
+    role = getattr(request.user, "role", None)
+    return role.name if role else "waiter"
+
+
+def _is_staff_manager(request: HttpRequest) -> bool:
+    user = request.user
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    role = getattr(user, "role", None)
+    return role is not None and role.name in ("waiter", "admin")
+
+
+def _manage_context(request: HttpRequest) -> dict[str, Any]:
+    to_serve: list[Any] = list(OrderService.list_to_serve())
+    editable: list[Any] = list(
+        OrderItem.objects.filter(
+            status=OrderItem.Status.PENDING,
+            order__status=Order.Status.OPEN,
+            product__requires_preparation=True,
+        )
+        .select_related("order", "order__table", "product")
+        .order_by("order__table__code", "created_at")
+    )
+    for item in to_serve + editable:
+        item.table_code = item.order.table.code if item.order.table else "Sin mesa"
+    return {"to_serve": to_serve, "editable": editable}
+
+
+def _render_manage_sections(request: HttpRequest) -> HttpResponse:
+    return HttpResponse(
+        render_to_string(
+            "pos/_to_serve_sections.html",
+            _manage_context(request),
+            request=request,
+        )
     )
 
 
@@ -1010,6 +1196,7 @@ def _render_cart(request: HttpRequest, table_code: str) -> HttpResponse:
 
 def menu_public(request: HttpRequest, table_code: str) -> HttpResponse:
     """Vista pública del menú para autogestión por QR."""
+    OrderService.auto_close_due_tables()
     table = get_object_or_404(Table, code=table_code, is_active=True)
     now = django_tz.localtime()
 
@@ -1054,21 +1241,41 @@ def product_modal_public(
         Product.objects.select_related("category").prefetch_related("tags"),
         pk=product_id,
     )
-
     now = django_tz.localtime()
     orderable = MenuAvailabilityService.is_product_orderable(product, now)
     attachments = MenuOptionService.get_product_attachments(product)
 
+    edit_item: OrderItem | None = None
+    staff = _is_staff_manager(request)
+    raw_edit = request.GET.get("edit_item", "")
+    if raw_edit:
+        candidate: OrderItem | None = None
+        try:
+            candidate = OrderItem.objects.get(
+                pk=UUID(raw_edit),
+                product=product,
+                status=OrderItem.Status.PENDING,
+                order__status=Order.Status.OPEN,
+                order__table__code=table_code,
+            )
+        except (ValueError, OrderItem.DoesNotExist):
+            candidate = None
+        if candidate is not None:
+            in_session = str(candidate.order_id) in request.session.get(
+                _qr_session_key(table_code), []
+            )
+            if staff or (candidate.order.source == Order.Source.QR and in_session):
+                edit_item = candidate
+    if edit_item is not None:
+        orderable = True
+
     groups = []
     conditions = []
-
     for attachment in attachments:
         group = attachment.option_group
         min_selections = group.min_selections
-
         if attachment.is_required and min_selections < 1:
             min_selections = 1
-
         groups.append(
             {
                 "id": str(group.pk),
@@ -1079,7 +1286,6 @@ def product_modal_public(
                 "multiple": group.selection_type == "multiple",
             }
         )
-
         if attachment.condition_parent is not None:
             conditions.append(
                 {
@@ -1092,10 +1298,41 @@ def product_modal_public(
                 }
             )
 
-    # PASAR EL DICCIONARIO DIRECTO, NO json.dumps
+    if edit_item is not None:
+        if staff:
+            submit_url = reverse(
+                "pos_modify_item",
+                kwargs={
+                    "order_id": edit_item.order_id,
+                    "item_id": edit_item.pk,
+                },
+            )
+        else:
+            submit_url = reverse(
+                "customer_modify_item",
+                kwargs={
+                    "table_code": table_code,
+                    "order_id": edit_item.order_id,
+                    "item_id": edit_item.pk,
+                },
+            )
+        item_id = str(edit_item.pk)
+        preselected = [
+            UUID(option["value_id"])
+            for option in (edit_item.selected_options or [])
+            if option.get("value_id")
+        ]
+        edit_quantity = edit_item.quantity
+    else:
+        submit_url = reverse("add_to_cart", kwargs={"table_code": table_code})
+        item_id = ""
+        preselected = []
+        edit_quantity = 1
+
     modal_config = {
         "product_id": str(product.pk),
-        "add_url": reverse("add_to_cart", kwargs={"table_code": table_code}),
+        "submit_url": submit_url,
+        "item_id": item_id,
         "base_price": str(product.price),
         "orderable": orderable,
         "groups": groups,
@@ -1110,7 +1347,10 @@ def product_modal_public(
             "product": product,
             "attachments": attachments,
             "orderable": orderable,
-            "modal_config": modal_config,  # <-- CAMBIO AQUÍ: diccionario, no string
+            "modal_config": modal_config,
+            "edit_item": edit_item,
+            "preselected": preselected,
+            "edit_quantity": edit_quantity,
         },
     )
 
@@ -1215,12 +1455,47 @@ def checkout_qr(request: HttpRequest, table_code: str) -> HttpResponse:
         messages.error(request, "El carrito está vacío")
         return redirect("menu_public", table_code=table_code)
 
+    product_ids = [
+        UUID(str(line.get("product_id"))) for line in lines if line.get("product_id")
+    ]
+    has_prep = Product.objects.filter(
+        pk__in=product_ids, requires_preparation=True
+    ).exists()
+
+    force_new = bool(request.session.pop(f"qr_new_order_{table_code}", False))
+    existing_order = (
+        Order.objects.filter(
+            table=table,
+            status=Order.Status.OPEN,
+            source=Order.Source.QR,
+        )
+        .prefetch_related("items")
+        .first()
+    )
+    if (
+        existing_order is not None
+        and not force_new
+        and has_prep
+        and not OrderService.can_customer_add(existing_order)
+    ):
+        messages.error(
+            request,
+            "Tu pedido ya está listo o entregado. Pide ayuda al mesero "
+            "o crea un nuevo pedido desde el estado de tu orden.",
+        )
+        return redirect(
+            "customer_order_status",
+            table_code=table_code,
+            order_id=existing_order.pk,
+        )
+
     try:
         order = OrderService.create_from_cart_lines(
             table.pk,
             lines,
             notes="Pedido desde QR (autogestión)",
             source=Order.Source.QR,
+            force_new=force_new or existing_order is None,
         )
     except ValueError as exc:
         messages.error(request, str(exc))
@@ -1230,17 +1505,251 @@ def checkout_qr(request: HttpRequest, table_code: str) -> HttpResponse:
         return redirect("menu_public", table_code=table_code)
 
     request.session.pop(cart_key(table_code), None)
+    _register_qr_order(request, table_code, order.pk)
     request.session.modified = True
-
-    messages.success(
-        request,
-        f"¡Pedido enviado a cocina! Orden #{str(order.pk)[:8]}",
-    )
-
+    messages.success(request, "¡Pedido enviado a cocina!")
     return render(
         request,
         "pos/order_success.html",
         {"order": order, "table": table},
+    )
+
+
+def customer_orders(request: HttpRequest, table_code: str) -> HttpResponse:
+    get_object_or_404(Table, code=table_code, is_active=True)
+    ids = request.session.get(_qr_session_key(table_code), [])
+    orders: list[Any] = list(
+        Order.objects.filter(
+            pk__in=ids,
+            source=Order.Source.QR,
+            table__code=table_code,
+        )
+        .select_related("table")
+        .prefetch_related("items", "payments")
+        .order_by("-created_at")
+    )
+    for order in orders:
+        order.overall_label_ = _overall_label(order)
+        order.paid_ = OrderService.is_order_paid(order)
+        order.paid_amount_ = sum(
+            (p.amount for p in order.payments.all()), Decimal("0.00")
+        )
+        order.remaining_ = max(order.total - order.paid_amount_, Decimal("0.00"))
+        order.is_open_ = order.status == Order.Status.OPEN
+    return render(
+        request,
+        "pos/customer_orders.html",
+        {
+            "table_code": table_code,
+            "orders": orders,
+            **_session_bill(request, table_code),
+        },
+    )
+
+
+def customer_order_status(
+    request: HttpRequest, table_code: str, order_id: UUID
+) -> HttpResponse:
+    """Detalle público del pedido con estado en vivo."""
+    order = _get_qr_order(request, table_code, order_id)
+    if order.table:
+        table_code = order.table.code
+    return _render_order_status(request, table_code, order, full_page=True)
+
+
+@require_POST
+def customer_cancel_item(
+    request: HttpRequest,
+    table_code: str,
+    order_id: UUID,
+    item_id: UUID,
+) -> HttpResponse:
+    order = _get_qr_order(request, table_code, order_id)
+    item = get_object_or_404(OrderItem, pk=item_id, order=order)
+    error = ""
+    if item.status != OrderItem.Status.PENDING:
+        error = "Este item ya está en preparación; pide ayuda al mesero."
+    else:
+        OrderService.remove_item(order.pk, item.pk)
+        OrderService.checkout(order.pk)
+    order = OrderService.get(order.pk)
+    return _render_order_status(request, table_code, order, error=error)
+
+
+@require_POST
+def customer_modify_item(
+    request: HttpRequest,
+    table_code: str,
+    order_id: UUID,
+    item_id: UUID,
+) -> HttpResponse:
+    order = _get_qr_order(request, table_code, order_id)
+    error = ""
+    try:
+        quantity = int(request.POST.get("quantity", "1"))
+        if not 1 <= quantity <= MAX_CART_QTY:
+            raise ValueError("Cantidad inválida")
+        OrderService.modify_item(
+            order.pk,
+            item_id,
+            quantity,
+            request.POST.getlist("option_values"),
+        )
+    except (TypeError, ValueError) as exc:
+        error = str(exc)
+    order = OrderService.get(order.pk)
+    return _render_order_status(request, table_code, order, error=error)
+
+
+@require_POST
+def customer_new_order(request: HttpRequest, table_code: str) -> HttpResponse:
+    """Marca que el próximo checkout debe crear una orden nueva."""
+    get_object_or_404(Table, code=table_code, is_active=True)
+    request.session[f"qr_new_order_{table_code}"] = True
+    request.session.modified = True
+    messages.info(
+        request,
+        "Nuevo pedido iniciado: agrega items y confirma para enviarlo "
+        "como una orden separada.",
+    )
+    return redirect("menu_public", table_code=table_code)
+
+
+@role_required("waiter", "admin")
+def pos_to_serve(request: HttpRequest) -> HttpResponse:
+    """Panel de mesero: entregar, editar y cancelar."""
+    OrderService.auto_close_due_tables()
+    ctx = _manage_context(request)
+    ctx["tables"] = Table.objects.filter(is_active=True).order_by("code")
+    return render(request, "pos/to_serve.html", ctx)
+
+
+@role_required("waiter", "admin")
+@require_POST
+def pos_serve_item(request, order_id, item_id):
+    try:
+        OrderService.set_item_status(
+            order_id,
+            item_id,
+            OrderItem.Status.SERVED,
+            actor=_actor_role(request),
+        )
+        log_audit(request, "item.served", str(item_id)[:8])
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400)
+    return _render_manage_sections(request)
+
+
+@role_required("waiter", "admin")
+def pos_serve_list(request):
+    """Items listos para entregar + no-prep pendientes, en JSON para el POS."""
+    items = []
+    for item in OrderService.list_to_serve():
+        items.append(
+            {
+                "id": str(item.pk),
+                "order_id": str(item.order_id),
+                "table_code": (
+                    item.order.table.code if item.order.table else "Sin mesa"
+                ),
+                "product_name": item.product_name,
+                "quantity": item.quantity,
+                "status": item.status,
+                "options_label": "; ".join(
+                    f"{o.get('group_name')}: {o.get('value_name')}"
+                    for o in (item.selected_options or [])
+                ),
+            }
+        )
+    return JsonResponse({"items": items})
+
+
+@role_required("waiter", "admin")
+@require_POST
+def pos_cancel_ready(request, order_id, item_id):
+    reason = request.POST.get("reason", "").strip()
+    try:
+        OrderService.set_item_status(
+            order_id,
+            item_id,
+            OrderItem.Status.CANCELLED,
+            actor=_actor_role(request),
+            reason=reason,
+        )
+        log_audit(
+            request,
+            "item.cancelled_ready",
+            str(item_id)[:8],
+            f"motivo={reason}",
+        )
+    except ValueError as exc:
+        return HttpResponse(str(exc), status=400)
+    return _render_manage_sections(request)
+
+
+@role_required("waiter", "admin")
+@require_POST
+def pos_modify_item(request, order_id, item_id):
+    try:
+        quantity = int(request.POST.get("quantity", "1"))
+        if not 1 <= quantity <= MAX_CART_QTY:
+            raise ValueError("Cantidad inválida")
+        OrderService.modify_item(
+            order_id,
+            item_id,
+            quantity,
+            request.POST.getlist("option_values"),
+        )
+        log_audit(request, "item.modified", str(item_id)[:8])
+    except (TypeError, ValueError) as exc:
+        return HttpResponse(str(exc), status=400)
+    return _render_manage_sections(request)
+
+
+@role_required("waiter", "admin")
+def pos_table_bill(request, table_id):
+    table = get_object_or_404(Table, pk=table_id)
+    bill = OrderService.table_bill(table_id)
+    orders = []
+    for row in bill["orders"]:
+        order = row["order"]
+        items = [i for i in order.items.all() if i.status != OrderItem.Status.CANCELLED]
+        orders.append(
+            {
+                "id": str(order.pk),
+                "short": str(order.pk)[:8],
+                "source": order.source,
+                "customer_name": order.customer_name,
+                "created_at": order.created_at.strftime("%H:%M"),
+                "total": str(order.total),
+                "paid": str(row["paid"]),
+                "remaining": str(row["remaining"]),
+                "can_close": all(i.status == OrderItem.Status.SERVED for i in items),
+                "items": [
+                    {
+                        "id": str(i.pk),
+                        "name": i.product_name,
+                        "price": str(i.product_price),
+                        "quantity": i.quantity,
+                        "status": i.status,
+                        "options_label": "; ".join(
+                            f"{op.get('group_name')}: {op.get('value_name')}"
+                            for op in (i.selected_options or [])
+                        ),
+                    }
+                    for i in items
+                ],
+            }
+        )
+    return JsonResponse(
+        {
+            "table_id": str(table.id),
+            "table_code": table.code,
+            "orders": orders,
+            "total": str(bill["total"]),
+            "paid": str(bill["paid"]),
+            "remaining": str(bill["remaining"]),
+        }
     )
 
 

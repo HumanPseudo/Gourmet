@@ -219,6 +219,10 @@ cog.out('\n'.join(mdown.split('\n')[1:]))
   * description: Public base URL for served images, e.g. https://jnximziycwmcauyfilmy.supabase.co/storage/v1/object/public/menu-images/
   * type: `str`
   * default: `https://jnximziycwmcauyfilmy.supabase.co/storage/v1/object/public/menu-images/`
+* **AUTO_CLOSE_MINUTES**
+  * description: Minutos tras pago y todo servido para cerrar la mesa automáticamente
+  * type: `int`
+  * default: `30`
       <!-- [[[end]]] -->
 
 <!-- prettier-ignore-end -->

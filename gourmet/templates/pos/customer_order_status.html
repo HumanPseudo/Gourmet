@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head_title %}Estado del pedido | Gourmet{% endblock %}
+
+{% block content %}
+  <div style="max-width:700px;margin:0 auto;padding:16px;">
+    <h1 style="font-size:20px;color:#1f2937;margin-bottom:16px;">
+      📦 Estado de tu pedido
+    </h1>
+
+    {% include "pos/_order_status_box.html" %}
+
+    <div id="product-modal-container"></div>
+  </div>
+
+  <script src="{% static 'menu-options.js' %}?v=3"></script>
+{% endblock %}

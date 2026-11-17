@@ -1,0 +1,178 @@
+{% load currency %}
+
+<div
+  id="order-status-box"
+  hx-get="{% url 'customer_order_status' table_code order.id %}"
+  hx-trigger="every 15s"
+  hx-swap="outerHTML"
+  style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;"
+>
+  <div
+    style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;"
+  >
+    <div>
+      <strong style="font-size:16px;">Tu pedido</strong>
+      <span style="color:#6b7280;font-size:13px;">Mesa {{ table_code }}</span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      {% if paid %}
+        <span
+          style="background:#0d6efd;color:#fff;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;"
+        >
+          💳 Pagado
+        </span>
+      {% endif %}
+      <span
+        style="background:#28a745;color:#fff;padding:4px 12px;border-radius:999px;font-size:13px;font-weight:700;"
+      >
+        {{ overall_label }}
+      </span>
+    </div>
+  </div>
+
+  {% if error %}
+    <div
+      style="background:#f8d7da;color:#842029;border:1px solid #f5c2c7;padding:10px 12px;border-radius:6px;margin-bottom:12px;font-size:13px;"
+    >
+      {{ error }}
+    </div>
+  {% endif %}
+
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <tbody>
+      {% for item in items %}
+        <tr style="border-bottom:1px solid #f0f0f0;">
+          <td style="padding:10px 0;">
+            <div style="font-weight:600;color:#333;">
+              {{ item.quantity }}x {{ item.product_name }}
+            </div>
+            {% if item.selected_options %}
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;">
+                {% for option in item.selected_options %}
+                  {{ option.group_name }}:
+                  {{ option.value_name }}{% if not forloop.last %}·{% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </td>
+          <td style="padding:10px 0;text-align:right;color:#666;">
+            {{ item.product_price|floatformat:2|peso }}
+          </td>
+          <td style="padding:10px 8px;text-align:center;">
+            <span
+              style="
+              --badge-bg: {% if item.status == 'pending' %}#6c757d{% elif item.status == 'preparing' %}#fd7e14{% elif item.status == 'ready' %}#28a745{% else %}#0d6efd{% endif %};
+              padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;
+              background: var(--badge-bg);
+            "
+              >{{ item.status_label }}</span
+            >
+          </td>
+          <td style="padding:10px 0;text-align:right;white-space:nowrap;">
+            {% if item.can_modify and item.product_id %}
+              <button
+                type="button"
+                hx-get="{% url 'product_modal_public' table_code item.product_id %}?edit_item={{ item.id }}"
+                hx-target="#product-modal-container"
+                hx-swap="innerHTML"
+                style="background:#007bff;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;margin-right:6px;"
+              >
+                Modificar
+              </button>
+            {% endif %}
+            {% if item.can_cancel %}
+              <button
+                type="button"
+                hx-post="{% url 'customer_cancel_item' table_code order.id item.id %}"
+                hx-headers='{"X-CSRFToken":"{{ csrf_token }}"}'
+                hx-target="#order-status-box"
+                hx-swap="outerHTML"
+                hx-confirm="¿Cancelar este item?"
+                style="background:#dc3545;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;"
+              >
+                Cancelar
+              </button>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if cancelled_count %}
+    <p style="font-size:12px;color:#6b7280;margin:10px 0 0 0;">
+      {{ cancelled_count }} item(s) cancelado(s) no se muestran.
+    </p>
+  {% endif %}
+
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a323b;">
+    <div
+      style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"
+    >
+      <span style="font-size:12px;color:#8b949e;">Esta cuenta</span>
+      <strong style="font-size:16px;">{{ order.total|floatformat:2|peso }}</strong>
+    </div>
+
+    {% if bill_count > 1 %}
+      <div
+        style="background:linear-gradient(145deg,#132a1c,#161b22);border:1px solid #2a323b;border-radius:10px;padding:11px 13px;margin-bottom:10px;"
+      >
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <span
+            style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#8b949e;text-transform:uppercase;"
+          >
+            Total mesa · {{ bill_count }} cuentas
+          </span>
+          <strong style="font-size:20px;color:#3fb950;"
+            >{{ bill_total|floatformat:2|peso }}</strong
+          >
+        </div>
+        <div style="display:flex;gap:14px;margin-top:6px;font-size:11px;color:#8b949e;">
+          <span
+            >Pagado
+            <strong style="color:#3fb950;"
+              >{{ bill_paid|floatformat:2|peso }}</strong
+            ></span
+          >
+          <span
+            >Por pagar
+            <strong style="color:#d29922;"
+              >{{ bill_remaining|floatformat:2|peso }}</strong
+            ></span
+          >
+        </div>
+      </div>
+    {% endif %}
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+      {% if can_add %}
+        <a
+          href="{% url 'menu_public' table_code %}"
+          style="background:#2ea043;color:#fff;padding:9px 15px;border-radius:9px;font-size:13px;font-weight:800;text-decoration:none;"
+        >
+          + Agregar items
+        </a>
+      {% else %}
+        <form
+          method="post"
+          action="{% url 'customer_new_order' table_code %}"
+          style="margin:0;"
+        >
+          {% csrf_token %}
+          <button
+            type="submit"
+            style="background:#2f81f7;color:#fff;border:none;padding:9px 15px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;"
+          >
+            🆕 Crear nuevo pedido
+          </button>
+        </form>
+      {% endif %}
+      <a
+        href="{% url 'customer_orders' table_code %}"
+        style="background:#30363d;color:#e6edf3;padding:9px 15px;border-radius:9px;font-size:13px;font-weight:800;text-decoration:none;"
+      >
+        Mis pedidos
+      </a>
+    </div>
+  </div>
+</div>

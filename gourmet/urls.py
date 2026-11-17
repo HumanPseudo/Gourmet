@@ -177,6 +177,64 @@ urlpatterns: list[URLPattern | URLResolver] = [
         order_views.checkout_qr,
         name="checkout_qr",
     ),
+    path(
+        "menu/mesa/<str:table_code>/pedidos/",
+        order_views.customer_orders,
+        name="customer_orders",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/pedido/<uuid:order_id>/",
+        order_views.customer_order_status,
+        name="customer_order_status",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/pedido/<uuid:order_id>"
+        "/item/<uuid:item_id>/cancelar/",
+        order_views.customer_cancel_item,
+        name="customer_cancel_item",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/pedido/<uuid:order_id>"
+        "/item/<uuid:item_id>/modificar/",
+        order_views.customer_modify_item,
+        name="customer_modify_item",
+    ),
+    # --- Nuevas ---
+    path(
+        "pos/table-bill/<uuid:table_id>/",
+        order_views.pos_table_bill,
+        name="pos_table_bill",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/pedido-nuevo/",
+        order_views.customer_new_order,
+        name="customer_new_order",
+    ),
+    path(
+        "pos/to-serve/",
+        order_views.pos_to_serve,
+        name="pos_to_serve",
+    ),
+    path(
+        "pos/to-serve/<uuid:order_id>/<uuid:item_id>/servir/",
+        order_views.pos_serve_item,
+        name="pos_serve_item",
+    ),
+    path(
+        "pos/serve-list/",
+        order_views.pos_serve_list,
+        name="pos_serve_list",
+    ),
+    path(
+        "pos/to-serve/<uuid:order_id>/<uuid:item_id>/cancelar/",
+        order_views.pos_cancel_ready,
+        name="pos_cancel_ready",
+    ),
+    path(
+        "pos/to-serve/<uuid:order_id>/<uuid:item_id>/modificar/",
+        order_views.pos_modify_item,
+        name="pos_modify_item",
+    ),
     path("pos/reservations/", reservation_list, name="reservation_list"),
     path(
         "pos/reservations/calendar/",

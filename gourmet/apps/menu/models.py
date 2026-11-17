@@ -178,6 +178,16 @@ class Product(models.Model):
         default=0, verbose_name="Order"
     )
 
+    requires_preparation: models.BooleanField[bool, bool] = models.BooleanField(
+        default=True,
+        verbose_name="Requires preparation",
+        help_text=(
+            "Desactívalo para productos que se entregan directos "
+            "(bebidas embotelladas, snacks). Solo tienen "
+            "pending → served."
+        ),
+    )
+
     image: models.ImageField = models.ImageField(
         upload_to=menu_image_upload_to,
         validators=[validate_image_extension, validate_image_size],
