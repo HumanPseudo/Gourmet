@@ -223,7 +223,8 @@ class OrderService:
         item_id: UUID,
         quantity: int | None,
         notes: str | None,
-        status: str | None,
+        status: str | None = None,
+        discount_percent: Decimal | None = None,
     ) -> OrderItem:
         item = get_object_or_404(
             OrderItem,
@@ -241,8 +242,8 @@ class OrderService:
             item.quantity = quantity
         if notes is not None:
             item.notes = notes
-        if status is not None:
-            item.status = status
+        if discount_percent is not None:
+            item.discount_percent = discount_percent
         item.save()
         return item
 
@@ -536,12 +537,19 @@ class OrderService:
         order.status = Order.Status.CANCELLED
         order.closed_at = timezone.now()
         order.save(update_fields=["status", "closed_at"])
-        items = OrderItem.objects.filter(
-            order=order,
-            status=OrderItem.Status.PENDING,
+        items = OrderItem.objects.filter(order=order).exclude(
+            status=OrderItem.Status.CANCELLED
         )
         for item in items:
-            if item.product_id:
+            if (
+                item.product_id
+                and item.status
+                in (
+                    OrderItem.Status.PREPARING,
+                    OrderItem.Status.READY,
+                    OrderItem.Status.SERVED,
+                )
+            ):
                 OrderService._reverse_inventory(item.product_id, item.quantity)
         items.update(status=OrderItem.Status.CANCELLED)
         OrderService._release_table_if_free(order.table_id)

@@ -4,7 +4,6 @@ from collections import defaultdict
 from decimal import Decimal
 from uuid import UUID
 
-from django.conf import settings
 from django.db.models import Exists, F, OuterRef, QuerySet
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -16,33 +15,6 @@ from .models import (
     ProductOptionGroup,
 )
 from .schemas import CategoryIn, ProductIn
-
-
-def get_menu_image_url(image_field) -> str:
-    """
-    Devuelve la URL pública de una imagen del menú.
-
-    - Si hay storage S3 (Supabase) configurado, el campo FileField ya
-      devuelve la URL absoluta vía `.url`.
-    - Si es FileSystemStorage local, se concatena MENU_IMAGE_BASE_URL con
-      el nombre relativo.
-    """
-    if not image_field:
-        return ""
-    try:
-        url = image_field.url
-    except (ValueError, AttributeError):
-        return ""
-
-    # Si ya es absoluta (S3/CDN), devolverla tal cual
-    if url.startswith(("http://", "https://")):
-        return url
-
-    # Si es relativa (local), usar MENU_IMAGE_BASE_URL
-    base = settings.MENU_IMAGE_BASE_URL.rstrip("/")
-    # image_field.name contiene la ruta relativa dentro del storage
-    rel_path = image_field.name.lstrip("/")
-    return f"{base}/{rel_path}"
 
 
 class CategoryService:

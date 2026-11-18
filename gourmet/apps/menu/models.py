@@ -9,6 +9,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
 
+from django.core.files.storage import storages
+
 # Validador para formatos de imagen permitidos
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".jfif"}
 MAX_IMAGE_SIZE = 2 * 1024 * 1024  # 2 MB
@@ -32,6 +34,11 @@ def validate_image_size(value) -> None:
             f"La imagen es muy pesada ({size_mb:.1f} MB). "
             f"Tamaño máximo permitido: 2 MB."
         )
+
+
+def _menu_image_storage():
+    """Storage alias for menu images (local or S3)."""
+    return storages["menu_images"]
 
 
 def menu_image_upload_to(instance: Product, filename: str) -> str:
@@ -190,6 +197,7 @@ class Product(models.Model):
 
     image: models.ImageField = models.ImageField(
         upload_to=menu_image_upload_to,
+        storage=_menu_image_storage,
         validators=[validate_image_extension, validate_image_size],
         blank=True,
         null=True,
@@ -218,7 +226,14 @@ class Product(models.Model):
         """Devuelve la URL de la imagen."""
         if not self.image:
             return ""
-        return self.image.url
+        try:
+            return self.image.url
+        except (ValueError, AttributeError):
+            return ""
+
+    @property
+    def image_url(self) -> str:
+        return self.get_image_url()
 
     def active_tags(self):
         """Tags activos ordenados."""

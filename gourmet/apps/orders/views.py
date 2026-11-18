@@ -10,7 +10,7 @@ from uuid import UUID
 import qrcode  # type: ignore
 from django.conf import settings
 from django.contrib import messages
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -957,7 +957,8 @@ def _get_qr_order(request: HttpRequest, table_code: str, order_id: UUID) -> Orde
         pk=order_id,
         source=Order.Source.QR,
     )
-    _register_qr_order(request, table_code, order.pk)
+    if order.table is None or order.table.code != table_code:
+        raise Http404
     return order
 
 
@@ -1565,6 +1566,8 @@ def customer_cancel_item(
     item_id: UUID,
 ) -> HttpResponse:
     order = _get_qr_order(request, table_code, order_id)
+    if str(order.pk) not in request.session.get(_qr_session_key(table_code), []):
+        raise Http404
     item = get_object_or_404(OrderItem, pk=item_id, order=order)
     error = ""
     if item.status != OrderItem.Status.PENDING:
@@ -1584,6 +1587,8 @@ def customer_modify_item(
     item_id: UUID,
 ) -> HttpResponse:
     order = _get_qr_order(request, table_code, order_id)
+    if str(order.pk) not in request.session.get(_qr_session_key(table_code), []):
+        raise Http404
     error = ""
     try:
         quantity = int(request.POST.get("quantity", "1"))

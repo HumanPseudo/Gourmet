@@ -107,7 +107,11 @@ def update_item(
     request: HttpRequest, order_id: UUID, item_id: UUID, payload: OrderItemUpdate
 ) -> OrderItemOut:
     item = OrderService.update_item(
-        order_id, item_id, payload.quantity, payload.notes, payload.status
+        order_id,
+        item_id,
+        payload.quantity,
+        payload.notes,
+        discount_percent=payload.discount_percent,
     )
     return OrderItemOut.model_validate(item)
 
@@ -115,6 +119,7 @@ def update_item(
 @router.delete(
     "/{order_id}/items/{item_id}",
     response=MessageOut,
+    auth=RoleTokenAuth("waiter", "admin"),
     summary="Remove item from order",
 )
 def remove_item(
@@ -158,6 +163,7 @@ def pay(request: HttpRequest, order_id: UUID, payload: PaymentIn) -> tuple[int, 
 @router.post(
     "/{order_id}/cancel",
     response=OrderOut,
+    auth=RoleTokenAuth("waiter", "admin"),
     summary="Cancel order",
 )
 def cancel_order(request: HttpRequest, order_id: UUID) -> OrderOut:
@@ -180,6 +186,7 @@ def set_item_priority(
 @router.post(
     "/{order_id}/close",
     response={200: OrderOut, 400: MessageOut},
+    auth=RoleTokenAuth("waiter", "admin"),
     summary="Close order",
 )
 def close_order(request: HttpRequest, order_id: UUID) -> tuple[int, Any]:
@@ -193,6 +200,7 @@ def close_order(request: HttpRequest, order_id: UUID) -> tuple[int, Any]:
 @router.patch(
     "/{order_id}/items/{item_id}/status",
     response={200: OrderItemOut, 400: MessageOut},
+    auth=RoleTokenAuth("kitchen", "waiter", "admin"),
     summary="Update item status (kitchen)",
 )
 def update_item_status(
@@ -200,7 +208,13 @@ def update_item_status(
 ) -> tuple[int, Any]:
     if not payload.status:
         return 400, {"detail": "status is required"}
-    item = OrderService.set_item_status(order_id, item_id, payload.status)
+    actor = "admin"
+    user = request.user
+    if not user.is_superuser and getattr(user, "role", None):
+        actor = user.role.name
+    item = OrderService.set_item_status(
+        order_id, item_id, payload.status, actor=actor
+    )
     return 200, OrderItemOut.model_validate(item)
 
 
