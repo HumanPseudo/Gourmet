@@ -108,6 +108,25 @@ class User(AbstractUser):
     def __str__(self) -> str:
         return self.email
 
+    def _has_role(self, name: str) -> bool:
+        return self.is_staff and self.role is not None and self.role.name == name
+
+    @property
+    def is_admin(self) -> bool:
+        """Administrative access. Superusers always qualify (mirrors
+        ``role_required``'s superuser bypass)."""
+        return self.is_superuser or self._has_role("admin")
+
+    @property
+    def is_waiter(self) -> bool:
+        """True for staff users whose role is ``waiter``."""
+        return self._has_role("waiter")
+
+    @property
+    def is_kitchen(self) -> bool:
+        """True for staff users whose role is ``kitchen``."""
+        return self._has_role("kitchen")
+
 
 class AuditLog(models.Model):
     user = models.ForeignKey(

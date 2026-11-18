@@ -13,7 +13,7 @@
     <div style="display: flex; gap: 8px; align-items: center;">
       <a href="{% url 'floor_layout_list' %}" style="color: #6c757d; text-decoration: none; font-size: 13px;">← Volver</a>
       <button @click="save()" :disabled="saving" style="background: #007bff; color: #fff; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 14px;">
-        <span x-show="!saving">💾 Guardar posiciones</span>
+        <span x-show="!saving">Guardar posiciones</span>
         <span x-show="saving">Guardando…</span>
       </button>
     </div>
@@ -22,7 +22,7 @@
   <div x-show="message" x-text="message" style="background: #d4edda; color: #155724; padding: 10px 16px; border-radius: 6px; margin-bottom: 12px; font-size: 14px;"></div>
 
   <details style="margin-bottom: 16px; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; max-width: 480px;">
-    <summary style="cursor: pointer; font-weight: 600; font-size: 14px; color: #007bff;">⚙ Ajustar tamaño del plano</summary>
+    <summary style="cursor: pointer; font-weight: 600; font-size: 14px; color: #007bff;">Ajustar tamaño del plano</summary>
     <form method="post" style="display: flex; gap: 8px; align-items: end; margin-top: 12px; flex-wrap: wrap;">
       {% csrf_token %}
       <label style="font-size: 12px; color: #333;">Nombre<br>

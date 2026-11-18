@@ -6,7 +6,7 @@
     <h1 style="margin: 0;">Reservas — {{ selected_date|date:"l d/m/Y" }}</h1>
     <div style="display: flex; gap: 8px; align-items: center;">
       <a href="?date={{ prev_date|date:'Y-m-d' }}" style="background: #6c757d; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">← Día anterior</a>
-      <a href="{% url 'reservation_calendar' %}" style="background: #6f42c1; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">📅 Calendario</a>
+      <a href="{% url 'reservation_calendar' %}" style="background: #6f42c1; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">Calendario</a>
       <a href="?date={{ next_date|date:'Y-m-d' }}" style="background: #6c757d; color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px;">Día siguiente →</a>
     </div>
   </div>
@@ -91,7 +91,7 @@
                 </form>
               {% endif %}
             </details>
-            {% if r.notes %}<div style="font-size: 11px; color: #999; margin-top: 2px;">📝 {{ r.notes }}</div>{% endif %}
+            {% if r.notes %}<div style="font-size: 11px; color: #999; margin-top: 2px;">{{ r.notes }}</div>{% endif %}
           </td>
           <td style="padding: 10px;">{{ r.party_size }}</td>
           <td style="padding: 10px;">{{ r.table.code|default:"—" }}</td>

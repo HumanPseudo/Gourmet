@@ -547,6 +547,49 @@ class BillSplitTests(TestCase):
         assert result["status"] == 200
         assert not BillSplit.objects.filter(pk=split_id).exists()
 
+    def test_split_by_percentage_sums_to_total(self) -> None:
+        # Independent rounding of 33.33/33.33/33.34 of 37.80 overshoots by
+        # 0.01; the last split must absorb the remainder.
+        order, _, _ = self._create_order_with_items()
+        splits = OrderService.split_by_percentage(order.pk, [
+            {"label": "A", "percentage": Decimal("33.33")},
+            {"label": "B", "percentage": Decimal("33.33")},
+            {"label": "C", "percentage": Decimal("33.34")},
+        ])
+        assert sum(s.amount for s in splits) == order.total
+
+    def test_split_order_recheckouts_original(self) -> None:
+        # Move the pasta ($15 + 8%) to a new order; the original must drop it
+        # and report the real moved count (not 0).
+        order, _item1, item2 = self._create_order_with_items()
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("split_order", args=[order.pk]),
+            data=json.dumps({"item_ids": [str(item2.pk)]}),
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        assert response.json()["moved"] == 1
+        order.refresh_from_db()
+        # Only the pizza (10*2) + 8% remains = 21.60
+        assert order.total == Decimal("21.60")
+
+    def test_pay_split_from_wrong_order_rejected(self) -> None:
+        # A split may only be paid through its own order's endpoint.
+        order, item1, _ = self._create_order_with_items()
+        splits = OrderService.split_by_items(order.pk, [
+            {
+                "label": "Juan",
+                "items": [{"order_item_id": str(item1.pk), "quantity": 2}],
+            },
+        ])
+        other = Order.objects.create(table=self.table)
+        result = self._post(
+            f"/api/orders/{other.pk}/splits/{splits[0].pk}/pay",
+            {"method": "cash"},
+        )
+        assert result["status"] == 404
+        assert not BillSplit.objects.get(pk=splits[0].pk).paid
 
 
 class SetTableServiceTests(TestCase):

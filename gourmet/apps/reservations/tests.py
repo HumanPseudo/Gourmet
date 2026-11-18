@@ -125,6 +125,12 @@ class ReservationViewTests(TestCase):
         )
         assert response.status_code == 200
 
+    def test_calendar_view_bad_params_fall_back(self) -> None:
+        # Malformed year/month must not 500; they fall back to the current month.
+        for qs in ("?year=abc", "?month=13", "?year=2026&month=0"):
+            response = self.client.get(reverse("reservation_calendar") + qs)
+            assert response.status_code == 200, qs
+
     def test_list_view_default_today(self) -> None:
         response = self.client.get(reverse("reservation_list"))
         assert response.status_code == 200

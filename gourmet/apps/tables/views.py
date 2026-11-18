@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from django.contrib import messages
+from django.db import IntegrityError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -18,7 +19,7 @@ def table_layout_list(request):
     layouts = TableLayoutService.list()
     for layout in layouts:
         layout.table_count = layout.items.count()  # type: ignore[attr-defined]
-    return render(request, "pos/floor_layouts.html", {"layouts": layouts})
+    return render(request, "pos/floor/floor_layouts.html", {"layouts": layouts})
 
 
 @role_required("waiter", "admin")
@@ -29,11 +30,11 @@ def table_layout_create(request):
         height = int(request.POST.get("height", 600))
         if not name:
             messages.error(request, "El nombre del plano es requerido")
-            return render(request, "pos/floor_layout_form.html")
+            return render(request, "pos/floor/floor_layout_form.html")
         layout = TableLayoutService.create(name, width, height)
         messages.success(request, f"Plano '{layout.name}' creado")
         return redirect("floor_layout_edit", layout_id=layout.pk)
-    return render(request, "pos/floor_layout_form.html")
+    return render(request, "pos/floor/floor_layout_form.html")
 
 
 @role_required("waiter", "admin")
@@ -55,7 +56,7 @@ def table_layout_edit(request, layout_id):
     ).order_by("code")
     return render(
         request,
-        "pos/floor_layout_editor.html",
+        "pos/floor/floor_layout_editor.html",
         {
             "layout": layout,
             "items": items,
@@ -102,7 +103,7 @@ def table_layout_save_positions(request, layout_id):
     items = data.get("items", [])
     try:
         TableLayoutService.save_positions(layout, items)
-    except (KeyError, TypeError, ValueError) as e:
+    except (KeyError, TypeError, ValueError, IntegrityError) as e:
         return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"status": "saved", "count": len(items)})
 

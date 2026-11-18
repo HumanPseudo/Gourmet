@@ -38,7 +38,7 @@
   {% if order.status == 'open' %}
   <div class="pay-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <div style="font-weight:700;font-size:16px;">💳 Cobrar</div>
+      <div style="font-weight:700;font-size:16px;">Cobrar</div>
       <div style="text-align:right;">
         <div style="font-size:12px;color:#888;">Pagado: {{ total_paid|floatformat:2|peso }}</div>
         <div style="font-size:20px;font-weight:700;color:#dc3545;">Falta: {{ pending|floatformat:2|peso }}</div>
@@ -64,15 +64,15 @@
         <label>Referencia</label>
         <input type="text" name="reference" placeholder="opcional" style="width:140px;">
       </div>
-      <button type="submit" style="background:#28a745;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;">💳 Cobrar</button>
+      <button type="submit" style="background:#28a745;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;">Cobrar</button>
     </form>
 
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
-      <a href="{% url 'print_receipt' order.pk %}" target="_blank" style="background:#17a2b8;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">🧾 Recibo</a>
-      <a href="{% url 'print_kitchen' order.pk %}" target="_blank" style="background:#fd7e14;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">🍳 Cocina</a>
+      <a href="{% url 'print_receipt' order.pk %}" target="_blank" style="background:#17a2b8;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">Recibo</a>
+      <a href="{% url 'print_kitchen' order.pk %}" target="_blank" style="background:#fd7e14;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">Cocina</a>
       <form method="post" action="{% url 'close_order' order.pk %}" style="margin-left:auto;">
         {% csrf_token %}
-        <button type="submit" style="background:#17a2b8;color:#fff;border:none;padding:8px 24px;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;">✅ Cerrar orden</button>
+        <button type="submit" style="background:#17a2b8;color:#fff;border:none;padding:8px 24px;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;">Cerrar orden</button>
       </form>
     </div>
   </div>
@@ -80,7 +80,7 @@
   <div style="margin-bottom:20px;">
     <form method="post" action="{% url 'reopen_order' order.pk %}" style="display:inline;">
       {% csrf_token %}
-      <button type="submit" style="background:#fd7e14;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;" onclick="return confirm('¿Reabrir esta orden?')">🔓 Reabrir orden</button>
+      <button type="submit" style="background:#fd7e14;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;" onclick="return confirm('¿Reabrir esta orden?')">Reabrir orden</button>
     </form>
   </div>
   {% endif %}
@@ -117,7 +117,7 @@
   </table>
 
   {% if order.status == 'open' %}
-  <button id="splitBtn" data-url="{% url 'split_order' order.pk %}" style="background:#6f42c1;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:20px;">✂️ Separar items</button>
+  <button id="splitBtn" data-url="{% url 'split_order' order.pk %}" style="background:#6f42c1;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:20px;">Separar items</button>
   {% endif %}
 
   <h2 style="font-size:16px;margin-bottom:10px;">Pagos ({{ order.payments.count }})</h2>

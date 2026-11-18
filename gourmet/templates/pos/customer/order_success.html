@@ -3,6 +3,7 @@
 {% block head_title %}Pedido confirmado | Gourmet{% endblock %}
 
 {% block content %}
+:gourmet/templates/pos/customer/order_success.html
   <div style="max-width:520px;margin:40px auto;padding:16px;text-align:center;">
     <div
       style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px 20px;"
@@ -13,6 +14,7 @@
       </h1>
       <p style="color:#6b7280;font-size:14px;margin:0 0 4px 0;">
         Orden #{{ order.id|slice:":8" }} · Mesa {{ table.code }}
+:gourmet/templates/pos/customer/order_success.html
       </p>
       <p style="color:#28a745;font-size:22px;font-weight:800;margin:10px 0 20px 0;">
         {{ order.total|floatformat:2|peso }}

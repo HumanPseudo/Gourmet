@@ -194,11 +194,13 @@
     ></script>
   </head>
 
+:gourmet/templates/pos/terminal/pos.html
   <body x-data="posApp">
     <header
       style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 16px;background:#161b22;border-bottom:1px solid #2a323b;"
     >
       <strong style="font-size:15px;">Gourmet POS</strong>
+:gourmet/templates/pos/terminal/pos.html
 
       <nav style="display:flex;gap:12px;flex-wrap:wrap;">
         <a
@@ -286,6 +288,7 @@
           >Salir</a
         >
       </div>
+:gourmet/templates/pos/terminal/pos.html
     </header>
 
     <div
@@ -325,6 +328,7 @@
               @click="activeCat = c.id"
               x-text="c.name"
             ></button>
+:gourmet/templates/pos/terminal/pos.html
           </template>
           <span
             class="p-chip"
@@ -339,6 +343,7 @@
             >⚠ Bajo stock</span
           >
         </div>
+:gourmet/templates/pos/terminal/pos.html
 
         <div
           class="p-scroll"
@@ -368,6 +373,7 @@
               >
                 ⚙ con opciones
               </div>
+:gourmet/templates/pos/terminal/pos.html
             </button>
           </template>
           <p
@@ -472,6 +478,7 @@
             </template>
           </div>
 
+:gourmet/templates/pos/terminal/pos.html
           <div
             x-show="cart.length"
             style="margin-top:10px;"
@@ -531,6 +538,7 @@
               style="font-size:11px;color:#8b949e;text-align:center;margin-top:6px;"
               x-text="targetOrder ? ('Se agregará a la cuenta #' + targetOrder.short) : 'Se creará una cuenta nueva'"
             ></div>
+:gourmet/templates/pos/terminal/pos.html
           </div>
         </section>
 
@@ -589,6 +597,7 @@
                 </div>
               </template>
             </div>
+:gourmet/templates/pos/terminal/pos.html
           </template>
 
           <h4 style="margin:16px 0 8px;font-size:13px;color:#8b949e;">Otras mesas</h4>
@@ -615,6 +624,7 @@
             >
               No hay mesas adicionales.
             </span>
+:gourmet/templates/pos/terminal/pos.html
           </div>
 
           <template x-if="noTableOrders.length">

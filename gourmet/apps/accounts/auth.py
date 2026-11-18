@@ -52,6 +52,6 @@ def role_required(*roles: str):
                 not roles or (request.user.role and request.user.role.name in roles)
             ):
                 return view(request, *args, **kwargs)
-            return render(request, "403.html", status=403)
+            return render(request, "errors/403.html", status=403)
         return wrapper
     return decorator

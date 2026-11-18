@@ -8,9 +8,9 @@
   .label { font-size: 12px; color: #666; text-transform: uppercase; }
 </style>
 
-<h2 style="margin:0 0 16px;">📊 Dashboard</h2>
-<a href="{% url 'close_report' %}" style="display:inline-block;margin-bottom:16px;color:#6f42c1;margin-right:12px;">🧾 Corte de Caja</a>
-<a href="{% url 'audit_logs' %}" style="display:inline-block;margin-bottom:16px;color:#fd7e14;margin-right:12px;">📋 Auditoría</a>
+<h2 style="margin:0 0 16px;">Dashboard</h2>
+<a href="{% url 'close_report' %}" style="display:inline-block;margin-bottom:16px;color:#6f42c1;margin-right:12px;">Corte de Caja</a>
+<a href="{% url 'audit_logs' %}" style="display:inline-block;margin-bottom:16px;color:#fd7e14;margin-right:12px;">Auditoría</a>
 <a href="{% url 'pos' %}" style="display:inline-block;margin-bottom:16px;color:#007bff;">← POS</a>
 
 <form method="get" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
@@ -18,7 +18,7 @@
   <span>a</span>
   <input type="date" name="hasta" value="{{ hasta }}" style="padding:6px;border:1px solid #ccc;border-radius:4px;font-size:13px;">
   <button type="submit" style="padding:6px 16px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Filtrar</button>
-  <a href="{% url 'sales_csv' %}?desde={{ desde }}&hasta={{ hasta }}" style="padding:6px 16px;background:#28a745;color:#fff;border-radius:4px;text-decoration:none;font-size:13px;">⬇ CSV</a>
+  <a href="{% url 'sales_csv' %}?desde={{ desde }}&hasta={{ hasta }}" style="padding:6px 16px;background:#28a745;color:#fff;border-radius:4px;text-decoration:none;font-size:13px;">CSV</a>
 </form>
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px;">

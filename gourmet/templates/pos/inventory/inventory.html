@@ -45,7 +45,7 @@
 
   {% if low_stock %}
     <div style="background: #fff3cd; border: 1px solid #ffeeba; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-      <strong style="color: #856404;">⚠ Stock bajo en {{ low_stock|length }} producto(s):</strong>
+      <strong style="color: #856404;">Stock bajo en {{ low_stock|length }} producto(s):</strong>
       <ul style="margin: 8px 0 0 16px;">
         {% for item in low_stock %}
           <li style="color: #856404;">{{ item.name }} — {{ item.stock|floatformat:2 }} {{ item.unit }} (mín: {{ item.min_stock|floatformat:2 }})</li>

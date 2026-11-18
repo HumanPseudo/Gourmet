@@ -25,21 +25,21 @@
 
 <div style="padding:20px;max-width:800px;margin:0 auto;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-    <h1 style="margin:0;font-size:22px;">📋 Órdenes</h1>
+    <h1 style="margin:0;font-size:22px;">Órdenes</h1>
     <div style="display:flex;gap:8px;">
-      <a href="{% url 'dashboard' %}" style="background:#17a2b8;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">📊 Dashboard</a>
-      <a href="{% url 'pos' %}" style="background:#28a745;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">🛒 POS</a>
+      <a href="{% url 'dashboard' %}" style="background:#17a2b8;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">Dashboard</a>
+      <a href="{% url 'pos' %}" style="background:#28a745;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">POS</a>
     </div>
   </div>
 
   {% regroup orders by status as status_groups %}
   {% for group in status_groups %}
     {% if group.grouper == 'open' %}
-    <h2 style="font-size:16px;margin:0 0 12px 0;color:#28a745;">🟢 Abiertas ({{ group.list|length }})</h2>
+    <h2 style="font-size:16px;margin:0 0 12px 0;color:#28a745;">Abiertas ({{ group.list|length }})</h2>
     {% elif group.grouper == 'closed' %}
-    <h2 style="font-size:16px;margin:24px 0 12px 0;color:#6c757d;">⚪ Cerradas ({{ group.list|length }})</h2>
+    <h2 style="font-size:16px;margin:24px 0 12px 0;color:#6c757d;">Cerradas ({{ group.list|length }})</h2>
     {% else %}
-    <h2 style="font-size:16px;margin:24px 0 12px 0;color:#dc3545;">🔴 {{ group.grouper|title }} ({{ group.list|length }})</h2>
+    <h2 style="font-size:16px;margin:24px 0 12px 0;color:#dc3545;">{{ group.grouper|title }} ({{ group.list|length }})</h2>
     {% endif %}
 
     {% for order in group.list %}
@@ -67,7 +67,7 @@
       </div>
       <div>
         {% if order.status == 'open' %}
-          <a href="{% url 'order_detail' order.pk %}" class="btn-cobrar">💳 Cobrar</a>
+          <a href="{% url 'order_detail' order.pk %}" class="btn-cobrar">Cobrar</a>
         {% else %}
           <a href="{% url 'order_detail' order.pk %}" class="btn-ver">Ver</a>
         {% endif %}

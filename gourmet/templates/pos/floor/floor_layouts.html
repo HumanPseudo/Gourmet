@@ -29,7 +29,7 @@
           <td style="padding: 10px;">{{ layout.name }}</td>
           <td style="padding: 10px;">{{ layout.width }} × {{ layout.height }}</td>
           <td style="padding: 10px;">{{ layout.table_count }}</td>
-          <td style="padding: 10px;">{% if layout.is_active %}✅{% else %}—{% endif %}</td>
+          <td style="padding: 10px;">{% if layout.is_active %}Sí{% else %}—{% endif %}</td>
           <td style="padding: 10px; display: flex; gap: 10px;">
             <a href="{% url 'floor_layout_edit' layout.id %}" style="color: #007bff; text-decoration: none; font-size: 13px;">Editar</a>
             {% if user.is_superuser or user.role.name == 'admin' %}

@@ -43,10 +43,13 @@ def _parse_reserved_for(request) -> datetime | None:
 @role_required("waiter", "admin")
 def reservation_calendar(request):
     today = timezone.localdate()
-    year = int(request.GET.get("year", today.year))
-    month = int(request.GET.get("month", today.month))
-
-    first_day = date(year, month, 1)
+    try:
+        year = int(request.GET.get("year", today.year))
+        month = int(request.GET.get("month", today.month))
+        first_day = date(year, month, 1)
+    except (ValueError, TypeError):
+        year, month = today.year, today.month
+        first_day = date(year, month, 1)
     last_day_num = calendar.monthrange(year, month)[1]
     last_day = date(year, month, last_day_num)
     counts = ReservationService.counts_by_day(first_day, last_day)
@@ -65,7 +68,7 @@ def reservation_calendar(request):
 
     return render(
         request,
-        "pos/reservation_calendar.html",
+        "pos/reservations/reservation_calendar.html",
         {
             "weeks": weeks,
             "month_name": first_day.strftime("%B %Y"),
@@ -126,7 +129,7 @@ def reservation_list(request):
     tables = Table.objects.filter(is_active=True).order_by("code")
     return render(
         request,
-        "pos/reservation_list.html",
+        "pos/reservations/reservation_list.html",
         {
             "reservations": reservations,
             "tables": tables,
