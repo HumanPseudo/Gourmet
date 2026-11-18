@@ -1,20 +1,39 @@
 {% extends "base.html" %}
-{% block head_title %}Pedido Confirmado | Gourmet{% endblock %}
+{% load currency %}
+{% block head_title %}Pedido confirmado | Gourmet{% endblock %}
+
 {% block content %}
-  <div class="flex min-h-screen items-center justify-center bg-gray-100">
-    <div class="max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
-      <h1 class="mb-4 text-2xl font-bold text-green-600">¡Pedido Enviado a Cocina!</h1>
-      <p class="mb-2 text-gray-600">Mesa: <strong>{{ table.code }}</strong></p>
-      <p class="mb-6 text-gray-600">Orden: <strong>#{{ order.pk }}</strong></p>
-      <p class="mb-6 text-sm text-gray-500">
-        Tu mesero te atenderá cuando el pedido esté listo.
+:gourmet/templates/pos/customer/order_success.html
+  <div style="max-width:520px;margin:40px auto;padding:16px;text-align:center;">
+    <div
+      style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px 20px;"
+    >
+      <div style="font-size:48px;">✅</div>
+      <h1 style="font-size:20px;color:#1f2937;margin:10px 0 6px 0;">
+        ¡Pedido enviado a cocina!
+      </h1>
+      <p style="color:#6b7280;font-size:14px;margin:0 0 4px 0;">
+        Orden #{{ order.id|slice:":8" }} · Mesa {{ table.code }}
+:gourmet/templates/pos/customer/order_success.html
       </p>
-      <a
-        href="{% url 'menu_public' table.code %}"
-        class="text-blue-600 hover:underline"
-      >
-        ← Volver al menú
-      </a>
+      <p style="color:#28a745;font-size:22px;font-weight:800;margin:10px 0 20px 0;">
+        {{ order.total|floatformat:2|peso }}
+      </p>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <a
+          href="{% url 'customer_order_status' table.code order.id %}"
+          style="background:#28a745;color:#fff;padding:12px;border-radius:6px;font-weight:700;text-decoration:none;"
+        >
+          📦 Ver estado de mi pedido
+        </a>
+        <a
+          href="{% url 'menu_public' table.code %}"
+          style="background:#6c757d;color:#fff;padding:12px;border-radius:6px;font-weight:700;text-decoration:none;"
+        >
+          🍽️ Volver al menú
+        </a>
+      </div>
     </div>
   </div>
 {% endblock %}

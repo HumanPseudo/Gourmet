@@ -1,0 +1,671 @@
+{% load static %}
+<style>
+  .gbill {
+    --gb-bg: #0d1117;
+    --gb-surface: #161b22;
+    --gb-raised: #1b2127;
+    --gb-line: #2a323b;
+    --gb-text: #e6edf3;
+    --gb-muted: #8b949e;
+    --gb-green: #2ea043;
+    --gb-green-hi: #3fb950;
+    --gb-blue: #2f81f7;
+    --gb-amber: #d29922;
+    --gb-red: #f85149;
+    --gb-violet: #a371f7;
+    color: var(--gb-text);
+    font-size: 13px;
+  }
+  .gscroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .gscroll::-webkit-scrollbar-track {
+    background: #0d1117;
+    border-radius: 8px;
+  }
+  .gscroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2ea043, #1f6f31);
+    border-radius: 8px;
+    border: 2px solid #0d1117;
+  }
+  .gscroll::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #3fb950, #2ea043);
+  }
+  .gscroll {
+    scrollbar-width: thin;
+    scrollbar-color: #2ea043 #0d1117;
+  }
+  .gbill-card {
+    background: var(--gb-surface);
+    border: 1px solid var(--gb-line);
+    border-radius: 12px;
+    overflow: hidden;
+    transition:
+      border-color 0.18s ease,
+      transform 0.18s ease;
+  }
+  .gbill-card:hover {
+    border-color: #3d4956;
+  }
+  .gbill-card.is-target {
+    border-color: var(--gb-green);
+    box-shadow:
+      0 0 0 1px rgba(46, 160, 67, 0.35),
+      0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+  .gbill-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    transition:
+      filter 0.15s ease,
+      transform 0.12s ease;
+  }
+  .gbill-btn:hover:not(:disabled) {
+    filter: brightness(1.15);
+  }
+  .gbill-btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .gbill-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .gbill-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .gbill-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: #21262d;
+    overflow: hidden;
+  }
+  .gbill-bar > i {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2ea043, #3fb950, #a3e635);
+    transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .gbill-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px dashed #21262d;
+  }
+  .gbill-row:last-child {
+    border-bottom: none;
+  }
+  .gbill-sep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0 10px;
+    color: var(--gb-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .gbill-sep::before,
+  .gbill-sep::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #2a323b, transparent);
+  }
+  .gbill-modal[hidden] {
+    display: none !important;
+  }
+  .gbill-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 3200;
+    background: rgba(1, 4, 9, 0.76);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .gbill-modal-box {
+    background: var(--gb-surface);
+    border: 1px solid var(--gb-line);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 440px;
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  }
+  .gbill-input {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--gb-line);
+    border-radius: 9px;
+    background: var(--gb-bg);
+    color: var(--gb-text);
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+  .gbill-input:focus {
+    outline: 2px solid var(--gb-green);
+    outline-offset: 1px;
+  }
+  @keyframes gb-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgba(63, 185, 80, 0);
+    }
+  }
+  .gbill-ready {
+    animation: gb-pulse 2s ease-in-out infinite;
+  }
+</style>
+
+<div class="gbill">
+  <div
+    style="background:linear-gradient(145deg,#132a1c 0%,#161b22 55%,#131c2b 100%);border:1px solid #2a323b;border-radius:14px;padding:14px 16px;margin-bottom:12px;"
+  >
+    <div
+      style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;"
+    >
+      <div>
+        <div
+          style="font-size:10px;font-weight:800;letter-spacing:.16em;color:#8b949e;text-transform:uppercase;"
+        >
+          Cuenta de la mesa
+        </div>
+        <div
+          style="font-size:15px;font-weight:800;margin-top:2px;"
+          x-text="currentTableCode"
+        ></div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:#8b949e;font-weight:700;letter-spacing:.08em;">
+          TOTAL
+        </div>
+        <div
+          style="font-size:26px;font-weight:900;line-height:1.1;color:#3fb950;"
+          x-text="_formatPeso(billTotal)"
+        ></div>
+      </div>
+    </div>
+
+    <div
+      class="gbill-bar"
+      style="margin:12px 0 8px;"
+    >
+      <i :style="'width:' + billPaidPct + '%'"></i>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;">
+      <span style="color:#8b949e;"
+        >Pagado
+        <strong
+          style="color:#3fb950;"
+          x-text="_formatPeso(billPaid)"
+        ></strong
+      ></span>
+      <span style="color:#8b949e;"
+        >Por pagar
+        <strong
+          :style="'color:' + (billSettled ? '#3fb950' : '#d29922')"
+          x-text="_formatPeso(billRemaining)"
+        ></strong>
+      </span>
+    </div>
+
+    <div
+      style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center;"
+    >
+      <span
+        class="gbill-chip"
+        style="background:#30363d;"
+        ><span x-text="billOrders.length"></span> cuenta(s)</span
+      >
+      <span
+        class="gbill-chip"
+        style="background:#2ea043;"
+        x-show="billSettled"
+        >Saldada</span
+      >
+      <span
+        class="gbill-chip"
+        style="background:#d29922;color:#0d1117;"
+        x-show="billTotal > 0 && !billSettled"
+        >Pendiente</span
+      >
+      <button
+        type="button"
+        class="gbill-btn"
+        style="background:#30363d;margin-left:auto;"
+        @click="loadTableBill()"
+        title="Recargar cuenta"
+      >
+        ⟳
+      </button>
+    </div>
+  </div>
+
+  <div
+    x-show="billNotice"
+    x-cloak
+    style="background:rgba(46,160,67,.12);border:1px solid rgba(46,160,67,.4);color:#7ee2a8;border-radius:9px;padding:8px 11px;font-size:12px;margin-bottom:10px;"
+    x-text="billNotice"
+  ></div>
+  <div
+    x-show="billError"
+    x-cloak
+    style="background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.4);color:#ff9b95;border-radius:9px;padding:8px 11px;font-size:12px;margin-bottom:10px;"
+    x-text="billError"
+  ></div>
+
+  <div
+    x-show="billOrders.length"
+    style="display:flex;align-items:center;gap:8px;background:#161b22;border:1px dashed #2a323b;border-radius:9px;padding:8px 11px;margin-bottom:12px;font-size:11px;color:#8b949e;"
+  >
+    <span style="font-weight:800;letter-spacing:.06em;">DESTINO DE NUEVOS ITEMS</span>
+    <span
+      style="margin-left:auto;font-weight:800;color:#3fb950;"
+      x-text="targetOrder ? ('#' + targetOrder.short) : 'Orden nueva'"
+    ></span>
+  </div>
+
+  <div
+    class="gscroll"
+    style="max-height:46vh;overflow-y:auto;padding-right:4px;"
+  >
+    <template
+      x-for="(o, idx) in billOrders"
+      :key="o.id"
+    >
+      <div>
+        <div
+          class="gbill-sep"
+          x-show="idx > 0"
+        >
+          <span x-text="'Cuenta ' + (idx + 1)"></span>
+        </div>
+
+        <div
+          class="gbill-card"
+          :class="targetOrder && targetOrder.id === o.id ? 'is-target' : ''"
+        >
+          <div
+            style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1b2127;border-bottom:1px solid #2a323b;"
+          >
+            <span
+              class="gbill-chip"
+              :style="'background:' + sourceColor(o.source)"
+              x-text="sourceLabel(o.source)"
+            ></span>
+            <strong
+              style="font-size:13px;"
+              x-text="'#' + o.short"
+            ></strong>
+            <span
+              style="font-size:11px;color:#8b949e;"
+              x-text="o.created_at"
+            ></span>
+            <span
+              style="margin-left:auto;font-size:11px;color:#8b949e;"
+              x-text="o.items.length + ' item(s)'"
+            ></span>
+          </div>
+
+          <div style="padding:4px 12px 8px;">
+            <template
+              x-for="i in o.items"
+              :key="i.id"
+            >
+              <div class="gbill-row">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-weight:700;font-size:12.5px;line-height:1.35;">
+                    <span x-text="i.quantity + '× '"></span
+                    ><span x-text="i.name"></span>
+                  </div>
+                  <div
+                    x-show="i.options_label"
+                    x-text="i.options_label"
+                    style="font-size:11px;color:#8b949e;margin-top:2px;line-height:1.35;"
+                  ></div>
+                  <div style="margin-top:5px;display:flex;gap:6px;align-items:center;">
+                    <span
+                      class="gbill-chip"
+                      :class="i.status === 'ready' ? 'gbill-ready' : ''"
+                      :style="'background:' + statusColor(i.status)"
+                      x-text="statusLabel(i.status)"
+                    ></span>
+                    <span
+                      style="font-size:11px;color:#8b949e;"
+                      x-text="_formatPeso(itemUnitPrice(i)) + ' c/u'"
+                    ></span>
+                  </div>
+                </div>
+                <div style="text-align:right;white-space:nowrap;">
+                  <div
+                    style="font-weight:800;font-size:12.5px;"
+                    x-text="_formatPeso(itemLineTotal(i))"
+                  ></div>
+                  <button
+                    type="button"
+                    class="gbill-btn"
+                    style="background:#21262d;color:#f85149;padding:3px 7px;margin-top:5px;"
+                    @click="removeOrderItem(o.id, i.id)"
+                    title="Quitar item"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </template>
+            <div
+              x-show="!o.items.length"
+              style="padding:10px 0;color:#8b949e;font-size:12px;text-align:center;"
+            >
+              Sin items activos.
+            </div>
+          </div>
+
+          <div
+            style="padding:10px 12px;background:#12171d;border-top:1px solid #2a323b;"
+          >
+            <div
+              class="gbill-bar"
+              style="height:4px;margin-bottom:8px;"
+            >
+              <i :style="'width:' + orderPaidPct(o) + '%'"></i>
+            </div>
+            <div
+              style="display:flex;justify-content:space-between;font-size:11px;color:#8b949e;margin-bottom:9px;"
+            >
+              <span
+                >Total
+                <strong
+                  style="color:#e6edf3;"
+                  x-text="_formatPeso(orderTotal(o))"
+                ></strong
+              ></span>
+              <span
+                >Pagado
+                <strong
+                  style="color:#3fb950;"
+                  x-text="_formatPeso(orderPaid(o))"
+                ></strong
+              ></span>
+              <span
+                >Resta
+                <strong
+                  :style="'color:' + (orderSettled(o) ? '#3fb950' : '#d29922')"
+                  x-text="_formatPeso(orderRemaining(o))"
+                ></strong
+              ></span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button
+                type="button"
+                class="gbill-btn"
+                :style="'background:' + (targetOrder && targetOrder.id === o.id ? '#2ea043' : '#30363d')"
+                @click="setTarget(o.id)"
+              >
+                ➕ Destino
+              </button>
+              <button
+                type="button"
+                class="gbill-btn"
+                style="background:#2f81f7;"
+                :disabled="orderSettled(o)"
+                @click="openPay(o.id)"
+              >
+                💳 Cobrar
+              </button>
+              <button
+                type="button"
+                class="gbill-btn"
+                style="background:#a371f7;"
+                @click="openMove(o.id)"
+              >
+                🔀 Mover
+              </button>
+              <button
+                type="button"
+                class="gbill-btn"
+                :style="'background:' + (o.can_close ? '#30363d' : '#21262d')"
+                :disabled="!o.can_close"
+                :title="o.can_close ? 'Cerrar orden' : 'Hay items sin servir'"
+                @click="closeOrder(o.id)"
+              >
+                🔒 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div
+      x-show="!billOrders.length && !billLoading"
+      style="text-align:center;color:#8b949e;padding:26px 14px;background:#161b22;border:1px dashed #2a323b;border-radius:12px;"
+    >
+      <div style="font-size:26px;margin-bottom:6px;">🧾</div>
+      <div style="font-size:13px;font-weight:700;color:#e6edf3;">
+        Esta mesa no tiene cuentas abiertas
+      </div>
+      <div style="font-size:12px;margin-top:4px;">
+        Agrega productos y crea la primera orden.
+      </div>
+    </div>
+  </div>
+
+  <div
+    x-show="billOrders.length"
+    style="margin-top:12px;padding-top:12px;border-top:1px solid #2a323b;"
+  >
+    <button
+      type="button"
+      class="gbill-btn"
+      style="width:100%;background:linear-gradient(135deg,#2ea043,#1f6f31);padding:12px;font-size:14px;"
+      :disabled="billSettled"
+      @click="openPay(null)"
+    >
+      💳 Cobrar toda la mesa · <span x-text="_formatPeso(billRemaining)"></span>
+    </button>
+    <div
+      x-show="billSettled"
+      style="text-align:center;color:#3fb950;font-weight:800;font-size:13px;margin-top:8px;"
+    >
+      ✅ Cuenta saldada
+    </div>
+  </div>
+
+  <!-- ══ Modal: pago (imperativo) ══ -->
+  <div
+    class="gbill-modal p-modal"
+    id="pay-modal"
+    hidden
+  >
+    <div class="gbill-modal-box">
+      <div
+        style="padding:13px 16px;border-bottom:1px solid #2a323b;background:#1b2127;display:flex;justify-content:space-between;align-items:center;"
+      >
+        <h3 style="margin:0;font-size:15px;font-weight:800;">Registrar pago</h3>
+        <button
+          type="button"
+          class="gbill-btn"
+          style="background:none;color:#8b949e;font-size:18px;"
+          data-modal-close
+        >
+          ✕
+        </button>
+      </div>
+      <div
+        class="gscroll"
+        style="padding:16px;overflow-y:auto;"
+      >
+        <div style="font-size:11px;color:#8b949e;font-weight:700;letter-spacing:.06em;">
+          APLICA A
+        </div>
+        <div
+          style="font-size:14px;font-weight:800;margin:2px 0 12px;"
+          x-text="payScopeLabel"
+        ></div>
+
+        <div
+          style="display:flex;justify-content:space-between;align-items:baseline;background:#0d1117;border:1px solid #2a323b;border-radius:10px;padding:11px 13px;margin-bottom:14px;"
+        >
+          <span style="font-size:12px;color:#8b949e;">Saldo</span>
+          <strong
+            style="font-size:22px;color:#3fb950;"
+            x-text="_formatPeso(payScopeRemaining)"
+          ></strong>
+        </div>
+
+        <div style="display:flex;gap:6px;margin-bottom:14px;">
+          <template
+            x-for="m in methods"
+            :key="m.value"
+          >
+            <button
+              type="button"
+              class="gbill-btn"
+              :style="'flex:1;padding:10px 6px;background:' + (payMethod === m.value ? m.color : '#21262d')"
+              @click="payMethod = m.value"
+              x-text="m.label"
+            ></button>
+          </template>
+        </div>
+
+        <label
+          style="display:block;font-size:11px;color:#8b949e;font-weight:700;margin-bottom:5px;"
+        >
+          MONTO (vacío = saldo completo)
+        </label>
+        <input
+          type="number"
+          min="0"
+          step="100"
+          class="gbill-input"
+          x-model="payAmount"
+          :placeholder="_formatPeso(payScopeRemaining)"
+          style="margin-bottom:12px;"
+        />
+
+        <label
+          style="display:block;font-size:11px;color:#8b949e;font-weight:700;margin-bottom:5px;"
+          >PROPINA</label
+        >
+        <input
+          type="number"
+          min="0"
+          step="100"
+          class="gbill-input"
+          x-model="tipAmount"
+          placeholder="0"
+        />
+
+        <div
+          x-show="payError"
+          x-text="payError"
+          style="margin-top:12px;background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.4);color:#ff9b95;border-radius:9px;padding:8px 11px;font-size:12px;"
+        ></div>
+      </div>
+      <div
+        style="padding:13px 16px;border-top:1px solid #2a323b;background:#1b2127;display:flex;gap:8px;"
+      >
+        <button
+          type="button"
+          class="gbill-btn"
+          style="background:#30363d;padding:11px 16px;"
+          data-modal-close
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="gbill-btn"
+          style="flex:1;background:linear-gradient(135deg,#2ea043,#1f6f31);padding:11px;"
+          @click="payRemaining()"
+        >
+          Confirmar pago
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: mover (imperativo) ══ -->
+  <div
+    class="gbill-modal p-modal"
+    id="move-modal"
+    hidden
+  >
+    <div class="gbill-modal-box">
+      <div
+        style="padding:13px 16px;border-bottom:1px solid #2a323b;background:#1b2127;display:flex;justify-content:space-between;align-items:center;"
+      >
+        <h3 style="margin:0;font-size:15px;font-weight:800;">
+          Mover orden a otra mesa
+        </h3>
+        <button
+          type="button"
+          class="gbill-btn"
+          style="background:none;color:#8b949e;font-size:18px;"
+          data-modal-close
+        >
+          ✕
+        </button>
+      </div>
+      <div
+        class="gscroll"
+        style="padding:16px;overflow-y:auto;"
+      >
+        <p style="margin:0 0 12px;font-size:12px;color:#8b949e;">
+          La orden completa y su saldo se reasignan a la mesa destino.
+        </p>
+        <div
+          style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;"
+        >
+          <template
+            x-for="t in moveTargets"
+            :key="t.table_id"
+          >
+            <button
+              type="button"
+              class="gbill-btn"
+              style="background:#21262d;border:1px solid #2a323b;padding:12px 8px;text-align:left;"
+              @click="confirmMove(t.table_id)"
+            >
+              <div
+                style="font-size:13px;"
+                x-text="t.code"
+              ></div>
+              <div
+                style="font-size:10px;color:#8b949e;font-weight:600;margin-top:3px;"
+                x-text="t.order_count ? (t.order_count + ' cuenta(s)') : 'Libre'"
+              ></div>
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -31,12 +31,30 @@ Funcionalidades POS que SIESA tiene y Gourmet necesita para ser competitivo:
 - [x] Pedido llega directo a la cocina (KDS)
 - [x] Sin app descargable, todo web
 
-### 1.5 Menú mejorado
+### 1.5 Menú mejorado ✅
 
-- [ ] Fotos de platos
-- [ ] Variantes/complementos (ej: "papas o arroz", "término de cocción")
-- [ ] Menú por día/semana (specials)
-- [ ] Disponibilidad en tiempo real (agotado)
+- [x] Fotos de platos (upload con validación de formato/tamaño, storage Supabase-ready)
+- [x] Badges de producto (vegetariano / picante / nuevo) con icono SVG obligatorio
+- [x] Variantes y complementos (grupos de opciones, mínimos/máximos, precio delta)
+- [x] Opciones condicionales (ej. queso extra solo en doble/triple carne)
+- [x] Menú por día/semana (specials por categoría con reglas de disponibilidad)
+- [x] Disponibilidad en tiempo real (agotado manual + reglas por categoría)
+- [x] Productos sin preparación (bandera requires_preparation: pending → served)
+
+### 1.6 Ciclo de vida de orden y cuenta unificada ✅
+
+- [x] Cliente consulta el estado de su pedido en vivo (Recibido / Preparando / Listo /
+      Entregado)
+- [x] Cliente modifica o cancela items mientras estén pendientes
+- [x] Listado "Mis pedidos" por sesión con cuenta unificada de la mesa
+- [x] Motor de transiciones por rol con efectos de inventario (deduct/reverse)
+- [x] KDS continuo (pending/preparing/ready en una sola grilla, sin botón de servir)
+- [x] Panel de mesero "Para entregar" + modal en POS (entregar, modificar, cancelar con
+      motivo)
+- [x] Varias cuentas abiertas por mesa; total de mesa = suma de cuentas
+- [x] Cobro individual por cuenta o de toda la mesa; pago paralelo a los estados
+- [x] Cierre bloqueado con items sin servir; auto-cierre configurable tras pago+servido
+- [x] Mesa sticky en POS al refrescar; mover orden solo como acción explícita
 
 ---
 
@@ -138,6 +156,37 @@ Funcionalidades POS que SIESA tiene y Gourmet necesita para ser competitivo:
 
 ---
 
+## Fase 5 — Multi-tenant / White-label (evaluación previa)
+
+### 5.1 Evaluación de arquitectura
+
+- [ ] Comparar estrategias: tenant_id compartido vs schema por tenant vs DB por tenant
+- [ ] Definir modelo Tenant/Company y clave de aislamiento
+- [ ] Resolución de tenant: subdominio, path o header
+- [ ] Plan de migración desde el single-tenant actual
+
+### 5.2 Identidad y marca por cliente
+
+- [ ] Logo, favicon e imágenes propias (bucket/prefix por tenant)
+- [ ] Colorimetría y tipografía por tenant (theming con variables CSS)
+- [ ] Textos y nombre de marca configurables
+- [ ] Idioma por tenant (i18n) y formatos de moneda/fecha/número
+
+### 5.3 Configuración operativa por cliente
+
+- [ ] Hub de configuración (auto-cierre, motivos de merma, impuestos, reglas de menú)
+- [ ] Menú, precios y disponibilidad por tenant
+- [ ] Roles y permisos por tenant
+- [ ] Feature flags por tenant
+
+### 5.4 Aislamiento y seguridad
+
+- [ ] Scoping de queries por tenant (manager + middleware)
+- [ ] Pruebas de fuga de datos entre tenants
+- [ ] Almacenamiento de imágenes aislado por tenant
+
+---
+
 ## Resumen visual
 
 ```text
@@ -145,6 +194,7 @@ FASE 1: POS Completo         →  Competitivo con SIESA
 FASE 2: Gestión de Negocio   →  Inteligencia de negocio
 FASE 3: Back Office          →  Control financiero
 FASE 4: Integraciones        →  Omnicanal
+FASE 5: Multi-tenant         →  Un producto, muchos clientes
 ```
 
 **Tiempo estimado total:** 8-11 semanas

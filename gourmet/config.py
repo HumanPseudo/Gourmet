@@ -115,6 +115,53 @@ class Config(GoodConf):
         description="Business NIT shown on receipts",
     )
 
+    # === Menu Images Storage (Supabase S3-compatible) ===
+    MENU_IMAGE_BASE_URL: str = Field(
+        default="/media/menu/",
+        description=(
+            "Base URL for menu images. In dev: /media/menu/. "
+            "In prod: https://<project>.supabase.co/storage/v1/object/public/<bucket>/"
+        ),
+    )
+    SUPABASE_STORAGE_ENDPOINT: str = Field(
+        default="",
+        description=(
+            "Supabase S3-compatible endpoint, e.g. "
+            "https://jnximziycwmcauyfilmy.supabase.co/storage/v1/s3"
+        ),
+    )
+    SUPABASE_STORAGE_REGION: str = Field(
+        default="",
+        description="Region for Supabase S3 storage (e.g. us-east-1)",
+    )
+    SUPABASE_STORAGE_ACCESS_KEY: str = Field(
+        default="",
+        description="Supabase S3 access key",
+    )
+    SUPABASE_STORAGE_SECRET_KEY: str = Field(
+        default="",
+        description="Supabase S3 secret key",
+    )
+    SUPABASE_STORAGE_BUCKET: str = Field(
+        default="Gourmet",
+        description="Bucket name for menu images in Supabase",
+    )
+    SUPABASE_STORAGE_PUBLIC_URL: str = Field(
+        default="",
+        description=(
+            "Public base URL for served images, e.g. "
+            "https://jnximziycwmcauyfilmy.supabase.co/storage/v1/object/public/menu-images/"
+        ),
+    )
+
+    # === POS Settings ===
+    AUTO_CLOSE_MINUTES: int = Field(
+        default=30,
+        description=(
+            "Minutos tras pago y todo servido para cerrar la mesa automáticamente"
+        ),
+    )
+
     model_config = {"default_files": ["gourmet.yml"]}
 
 

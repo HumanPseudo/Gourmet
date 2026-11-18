@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head_title %}Para entregar | Gourmet{% endblock %}
+
+{% block content %}
+  <div
+    style="max-width:1400px;margin:0 auto;padding:16px;"
+    hx-get="{% url 'pos_to_serve' %}"
+    hx-trigger="every 8s"
+    hx-target="#to-serve-board"
+    hx-select="#to-serve-board"
+    hx-swap="outerHTML"
+  >
+    <div
+      style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"
+    >
+      <h1 style="margin:0;font-size:20px;color:#1f2937;">
+        🍽 Para entregar y gestionar
+      </h1>
+      <a
+        href="{% url 'pos' %}"
+        style="background:#6c757d;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;"
+      >
+        ← Volver al POS
+      </a>
+    </div>
+
+    <div
+      id="to-serve-board"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+    >
+      {% include "pos/_to_serve_sections.html" %}
+    </div>
+  </div>
+
+  <div
+    id="reason-modal"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;align-items:center;justify-content:center;padding:16px;"
+  >
+    <div
+      style="background:#fff;border-radius:10px;padding:20px;max-width:420px;width:100%;"
+    >
+      {% csrf_token %}
+      <h3 style="margin:0 0 12px 0;font-size:16px;color:#1f2937;">
+        Motivo de cancelación
+      </h3>
+      <p style="color:#6b7280;font-size:13px;margin:0 0 12px 0;">
+        El item ya estaba listo: indica por qué se cancela (queda como nota y merma).
+      </p>
+      <textarea
+        id="reason-text"
+        rows="3"
+        style="width:100%;padding:8px;border:1px solid #ced4da;border-radius:6px;font-size:14px;"
+        placeholder="Ej: se quemó, el cliente se fue, error de preparación..."
+      ></textarea>
+      <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end;">
+        <button
+          type="button"
+          class="js-reason-close"
+          style="background:#6c757d;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;"
+        >
+          Volver
+        </button>
+        <button
+          type="button"
+          id="reason-confirm"
+          style="background:#dc3545;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-weight:700;cursor:pointer;"
+        >
+          Confirmar cancelación
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mesero-modal-container"></div>
+
+  <script src="{% static 'pos-reason-modal.js' %}"></script>
+{% endblock %}

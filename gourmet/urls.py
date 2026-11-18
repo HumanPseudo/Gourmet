@@ -15,6 +15,7 @@ Including another URLconf
 """
 
 from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import URLPattern, URLResolver, include, path
 from django.views.generic import TemplateView
@@ -47,6 +48,7 @@ from gourmet.apps.orders.views import (
     pos_floor_status,
     pos_order_json,
     pos_pay,
+    pos_product_options,
     pos_remove_item,
     pos_set_priority,
     pos_set_table,
@@ -96,6 +98,11 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("pos/close/<uuid:order_id>/", pos_close, name="pos_close"),
     path("pos/floor-status/", pos_floor_status, name="pos_floor_status"),
     path("pos/order-json/<uuid:order_id>/", pos_order_json, name="pos_order_json"),
+    path(
+        "pos/product-options/<uuid:product_id>/",
+        pos_product_options,
+        name="pos_product_options",
+    ),
     path(
         "pos/remove-item/<uuid:order_id>/<uuid:item_id>/",
         pos_remove_item,
@@ -156,6 +163,11 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="add_to_cart",
     ),
     path(
+        "menu/mesa/<str:table_code>/producto/<uuid:product_id>/modal/",
+        order_views.product_modal_public,
+        name="product_modal_public",
+    ),
+    path(
         "menu/mesa/<str:table_code>/remove/",
         order_views.remove_from_cart,
         name="remove_from_cart",
@@ -164,6 +176,64 @@ urlpatterns: list[URLPattern | URLResolver] = [
         "menu/mesa/<str:table_code>/checkout/",
         order_views.checkout_qr,
         name="checkout_qr",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/pedidos/",
+        order_views.customer_orders,
+        name="customer_orders",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/pedido/<uuid:order_id>/",
+        order_views.customer_order_status,
+        name="customer_order_status",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/pedido/<uuid:order_id>"
+        "/item/<uuid:item_id>/cancelar/",
+        order_views.customer_cancel_item,
+        name="customer_cancel_item",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/pedido/<uuid:order_id>"
+        "/item/<uuid:item_id>/modificar/",
+        order_views.customer_modify_item,
+        name="customer_modify_item",
+    ),
+    # --- Nuevas ---
+    path(
+        "pos/table-bill/<uuid:table_id>/",
+        order_views.pos_table_bill,
+        name="pos_table_bill",
+    ),
+    path(
+        "menu/mesa/<str:table_code>/pedido-nuevo/",
+        order_views.customer_new_order,
+        name="customer_new_order",
+    ),
+    path(
+        "pos/to-serve/",
+        order_views.pos_to_serve,
+        name="pos_to_serve",
+    ),
+    path(
+        "pos/to-serve/<uuid:order_id>/<uuid:item_id>/servir/",
+        order_views.pos_serve_item,
+        name="pos_serve_item",
+    ),
+    path(
+        "pos/serve-list/",
+        order_views.pos_serve_list,
+        name="pos_serve_list",
+    ),
+    path(
+        "pos/to-serve/<uuid:order_id>/<uuid:item_id>/cancelar/",
+        order_views.pos_cancel_ready,
+        name="pos_cancel_ready",
+    ),
+    path(
+        "pos/to-serve/<uuid:order_id>/<uuid:item_id>/modificar/",
+        order_views.pos_modify_item,
+        name="pos_modify_item",
     ),
     path("pos/reservations/", reservation_list, name="reservation_list"),
     path(
@@ -178,9 +248,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     ),
     path("pos/floor/", floor_view, name="floor_view"),
     path("pos/floor/layouts/", table_layout_list, name="floor_layout_list"),
-    path(
-        "pos/floor/layouts/new/", table_layout_create, name="floor_layout_create"
-    ),
+    path("pos/floor/layouts/new/", table_layout_create, name="floor_layout_create"),
     path(
         "pos/floor/layouts/<uuid:layout_id>/",
         table_layout_edit,
@@ -197,3 +265,6 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="floor_layout_delete",
     ),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

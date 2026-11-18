@@ -1,101 +1,112 @@
-{% load currency %}
+{% load order_tags %}
 <div
-  id="item-{{ item.pk }}"
-  class="kcard {{ item.status }}{% if item.elapsed > 20 %}delayed{% endif %}"
+  class="kitchen-card"
+  style="
+       --card-border: {% if item.status == 'ready' %}#28a745{% elif item.status == 'preparing' %}#fd7e14{% else %}#dee2e6{% endif %};
+       background: #fff;
+       border: 2px solid var(--card-border);
+       border-radius: 10px;
+       padding: 14px;
+       margin-bottom: 10px;
+     "
 >
   <div
-    style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;"
+    style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;"
   >
-    <strong style="font-size: 15px;">{{ item.product_name }}</strong>
-    {% if item.order.source == "qr" %}
-      <span class="ml-2 inline-block rounded bg-blue-500 px-2 py-1 text-xs text-white">
-        QR
-      </span>
-    {% endif %}
-    {% if item.status == 'pending' %}
-      <span
-        style="background: #17a2b8; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 11px;"
-        >{{ item.get_status_display }}</span
+    <div style="flex:1;min-width:180px;">
+      <div
+        style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;"
       >
-    {% elif item.status == 'preparing' %}
-      <span
-        style="background: #ffc107; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 11px;"
-        >{{ item.get_status_display }}</span
-      >
-    {% else %}
-      <span
-        style="background: #28a745; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 11px;"
-        >{{ item.get_status_display }}</span
-      >
-    {% endif %}
-  </div>
-  <div style="color: #666; font-size: 13px; margin-bottom: 6px;">
-    <strong>{{ item.quantity }}</strong> x {{ item.product_price|floatformat:2|peso }}
-    {% if item.table_code %}| Mesa <strong>{{ item.table_code }}</strong>{% endif %}
-  </div>
-  <div style="display: flex; gap: 12px; font-size: 13px; margin-bottom: 8px;">
-    <span
-      class="timer timer-{% if item.elapsed > 20 %}bad{% elif item.elapsed > 10 %}warn{% else %}ok{% endif %}"
-    >
-      {{ item.elapsed }} min
-    </span>
-    {% if item.preparing is not None %}
-      <span class="timer timer-warn">{{ item.preparing }} min</span>
-    {% endif %}
-  </div>
-  {% if item.notes %}
-    <div
-      style="background: #f8f9fa; padding: 6px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 8px; border-left: 3px solid #17a2b8;"
-    >
-      {{ item.notes }}
-    </div>
-  {% endif %}
-  <div style="display: flex; justify-content: space-between; align-items: center;">
-    <span style="font-size: 11px; color: #999;">{{ item.created_at|time:"H:i" }}</span>
-    <div style="display: flex; gap: 6px;">
-      {% if is_admin %}
-        <button
-          hx-post="{% url 'pos_set_priority' item_id=item.pk %}"
-          hx-vals='{"priority": {{ item.priority|add:"-1" }}}'
-          hx-target="#item-{{ item.pk }}"
-          hx-swap="outerHTML"
-          style="background: #6c757d; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;"
-          title="Subir prioridad"
+:gourmet/templates/pos/kitchen/_kitchen_card.html
+        <strong style="font-size:15px;color:#1f2937;">
+          {{ item.table_code|default:"—" }}
+        </strong>
+        <span style="font-size:11px;color:#6b7280;"> hace {{ item.elapsed }} min </span>
+        <span
+          style="
+          --badge-bg: {% if item.status == 'pending' %}#6c757d{% elif item.status == 'preparing' %}#fd7e14{% elif item.status == 'ready' %}#28a745{% else %}#0d6efd{% endif %};
+          background: var(--badge-bg);
+          color: #fff;
+          padding: 2px 8px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 700;
+        "
+:gourmet/templates/pos/kitchen/_kitchen_card.html
         >
-          ↑
-        </button>
-        <button
-          hx-post="{% url 'pos_set_priority' item_id=item.pk %}"
-          hx-vals='{"priority": {{ item.priority|add:"1" }}}'
-          hx-target="#item-{{ item.pk }}"
-          hx-swap="outerHTML"
-          style="background: #6c757d; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;"
-          title="Bajar prioridad"
-        >
-          ↓
-        </button>
+          {% if item.status == 'pending' %}Recibido{% elif item.status == 'preparing' %}Preparando{% elif item.status == 'ready' %}Listo{% else %}{{ item.status }}{% endif %}
+        </span>
+      </div>
+      <div style="font-size:16px;font-weight:700;color:#1f2937;">
+        {{ item.quantity }}x {{ item.product_name }}
+      </div>
+      {% if item.selected_options %}
+        <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+          {% for opt in item.selected_options %}
+            {{ opt.group_name|clean_group_name }}:
+            {{ opt.value_name }}{% if not forloop.last %}·{% endif %}
+          {% endfor %}
+        </div>
       {% endif %}
+      {% if item.notes %}
+        <div style="font-size:12px;color:#c00;margin-top:4px;font-style:italic;">
+          📝 {{ item.notes }}
+        </div>
+      {% endif %}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:160px;">
       {% if item.status == 'pending' %}
         <button
-          hx-post="{% url 'pos_update_item_status' order_id=item.order_id item_id=item.pk %}"
-          hx-vals='{"status": "preparing"}'
-          hx-target="#item-{{ item.pk }}"
+          type="button"
+          hx-post="{% url 'pos_update_item_status' item.order_id item.id %}"
+          hx-vals='{"status":"preparing"}'
+          hx-target="closest .kitchen-card"
           hx-swap="outerHTML"
-          style="background: #007bff; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px;"
+          style="background:#fd7e14;color:#fff;border:none;padding:8px 12px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px;"
         >
-          Preparar
+          🔥 Iniciar
         </button>
-      {% endif %}
-      {% if item.status == 'preparing' %}
+        {% if is_admin %}
+          <button
+            type="button"
+            hx-post="{% url 'pos_update_item_status' item.order_id item.id %}"
+            hx-vals='{"status":"cancelled"}'
+            hx-confirm="¿Cancelar este item pendiente?"
+            hx-target="closest .kitchen-card"
+            hx-swap="outerHTML"
+            style="background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;"
+          >
+            Cancelar
+          </button>
+        {% endif %}
+      {% elif item.status == 'preparing' %}
         <button
-          hx-post="{% url 'pos_update_item_status' order_id=item.order_id item_id=item.pk %}"
-          hx-vals='{"status": "ready"}'
-          hx-target="#item-{{ item.pk }}"
+          type="button"
+          hx-post="{% url 'pos_update_item_status' item.order_id item.id %}"
+          hx-vals='{"status":"ready"}'
+          hx-target="closest .kitchen-card"
           hx-swap="outerHTML"
-          style="background: #28a745; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px;"
+          style="background:#28a745;color:#fff;border:none;padding:8px 12px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px;"
         >
-          Listo
+          ✅ Listo
         </button>
+        <button
+          type="button"
+          hx-post="{% url 'pos_update_item_status' item.order_id item.id %}"
+          hx-vals='{"status":"pending"}'
+          hx-confirm="¿Devolver a pendiente? Se revertirá inventario."
+          hx-target="closest .kitchen-card"
+          hx-swap="outerHTML"
+          style="background:#6c757d;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;"
+        >
+          ↩ Volver
+        </button>
+      {% elif item.status == 'ready' %}
+        <div
+          style="text-align:center;color:#28a745;font-weight:700;font-size:13px;padding:8px 0;"
+        >
+          ⏳ Esperando mesero
+        </div>
       {% endif %}
     </div>
   </div>

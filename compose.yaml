@@ -27,6 +27,13 @@ services:
       SUPERUSER_EMAIL: ${SUPERUSER_EMAIL:-admin@example.com}
       SUPERUSER_PASSWORD: ${SUPERUSER_PASSWORD:-admin}
       SUPERUSER_NAME: ${SUPERUSER_NAME:-Admin}
+      MENU_IMAGE_BASE_URL: ${MENU_IMAGE_BASE_URL:-/media/menu/}
+      SUPABASE_STORAGE_ENDPOINT: ${SUPABASE_STORAGE_ENDPOINT:-}
+      SUPABASE_STORAGE_REGION: ${SUPABASE_STORAGE_REGION:-}
+      SUPABASE_STORAGE_ACCESS_KEY: ${SUPABASE_STORAGE_ACCESS_KEY:-}
+      SUPABASE_STORAGE_SECRET_KEY: ${SUPABASE_STORAGE_SECRET_KEY:-}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-menu-images}
+      SUPABASE_STORAGE_PUBLIC_URL: ${SUPABASE_STORAGE_PUBLIC_URL:-}
     restart: on-failure
     depends_on:
       - db
@@ -39,6 +46,7 @@ services:
     volumes:
       - .:/app
       - /app/.venv
+      - ./media:/app/media
 
   tailwind:
     build:

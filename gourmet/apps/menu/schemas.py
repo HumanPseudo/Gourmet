@@ -32,6 +32,8 @@ class ProductOut(Schema):
     tax_type: str = "INC_8"
     is_available: bool
     sort_order: int
+    has_options: bool = False
+    image_url: str = ""
     model_config = {"from_attributes": True}
 
 
