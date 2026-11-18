@@ -17,7 +17,6 @@
       <div
         style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;"
       >
-:gourmet/templates/pos/kitchen/_kitchen_card.html
         <strong style="font-size:15px;color:#1f2937;">
           {{ item.table_code|default:"—" }}
         </strong>
@@ -32,7 +31,6 @@
           font-size: 11px;
           font-weight: 700;
         "
-:gourmet/templates/pos/kitchen/_kitchen_card.html
         >
           {% if item.status == 'pending' %}Recibido{% elif item.status == 'preparing' %}Preparando{% elif item.status == 'ready' %}Listo{% else %}{{ item.status }}{% endif %}
         </span>
